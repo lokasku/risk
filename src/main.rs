@@ -9,7 +9,11 @@ fn main() {
         panic!("You must provide filecode.");
     }
 
-    let _content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
+    let content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
 
-    lalrpop::process_root().unwrap();
+    let parser = parser::parser::ProgramParser::new();
+    let res = parser.parse(&content);
+    let res2 = parser.parse(&content);
+    println!("{:?}", res);
+    println!("{:?}", res2);
 }

@@ -30,17 +30,18 @@
           inherit (toolchain) cargo rustc;
         };
 
-        idk = naersk-lib.buildPackage {
-          name = "idk";
+        risk = naersk-lib.buildPackage {
+          name = "risk";
           src = ./.;
         };
       in {
-        packages.idk = idk;
-        defaultPackage = self.packages.${system}.idk;
+        packages.risk = risk;
+        defaultPackage = self.packages.${system}.risk;
 
         devShell = pkgs.mkShell rec {
           packages = with pkgs; [ toolchain pkgs.ghc pkgs.lalrpop ];
           RUST_BACKTRACE = 0;
+          RUSTFLAGS = "-Zmacro-backtrace";
         };
       });
 }

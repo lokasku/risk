@@ -1,0 +1,44 @@
+use super::ast::*;
+use std::str::FromStr;
+
+grammar;
+
+pub Expr: Expr = {
+    Literal => Expr::Literal(<>),
+    Identifier => Expr::Identifier(<>),
+    Builtin => Expr::Builtin(<>)
+}
+
+pub Identifier: Identifier = {
+    <r"[a-z][a-zA-Z0-9]*"> => Identifier(<>.to_owned())
+}
+
+pub Builtin: Builtin = {
+    "+" => Builtin::Plus,
+    "-" => Builtin::Minus,
+    "/" => Builtin::Div,
+    "%" => Builtin::Mod,
+    "^" => Builtin::Exp,
+    "<" => Builtin::LT,
+    ">" => Builtin::GT,
+    ">=" => Builtin::GE,
+    "<=" => Builtin::LE,
+    "==" => Builtin::Eq,
+    "/=" => Builtin::Ineq,
+    "&&" => Builtin::And,
+    "||" => Builtin::Or,
+    "|" => Builtin::Pipe,
+    ":" => Builtin::Colon,
+    "\\" => Builtin::Lambda
+}
+
+pub Literal: Literal = {
+    <r"[+-]?\d+\.\d+"> => Literal::Float(f64::from_str(<>).expect("Expected floating point number")),
+    <r"[+-]?\d+"> => Literal::Integer(<>.parse::<i64>().expect("Expected an integer")),
+    <r#"".*""#> => Literal::String(<>[1..(<>.len()-1)].to_owned()),
+    <r"'.'"> => Literal::Char(<>[1..(<>.len()-1)].chars().next().expect("Expected a character")), // r"'[^']*'"
+    "True" => Literal::Bool(Bool::True),
+    "False" => Literal::Bool(Bool::False)
+}
+
+pub Program: Vec<Expr> = Expr*;

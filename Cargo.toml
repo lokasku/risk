@@ -1,16 +1,20 @@
 [package]
-name = "lazy"
+name = "risk"
 version = "0.1.0"
 edition = "2021"
 authors = ["Lokasku <lukasku@proton.me>"]
 description = "Some pure functional programming language."
-repository = "https://github.com/Lokasku/idk"
+repository = "https://github.com/Lokasku/risk"
 license = "GPL-3.0"
 keywords = ["pl", "fp", "language"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
+[build-dependencies]
 lalrpop = "0.20.0"
+
+[dependencies]
 lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }
-logos = "0.14.0"
+
+[env]
+OUT_DIR = "target/"
