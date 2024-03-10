@@ -1,1 +1,4 @@
- True False +22 +123432.0 "okokokok" 'o' omg \ + - < > >= <= && || | : 
+type X a b = A Either (c d) | B Maybe (Integer)
+type Y = C | D
+decl a = 2
+decl a = [Left (a b), 2, "hello"]

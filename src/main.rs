@@ -13,7 +13,5 @@ fn main() {
 
     let parser = parser::parser::ProgramParser::new();
     let res = parser.parse(&content);
-    let res2 = parser.parse(&content);
-    println!("{:?}", res);
-    println!("{:?}", res2);
+    println!("{:#?}", res);
 }

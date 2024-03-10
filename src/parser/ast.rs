@@ -1,18 +1,29 @@
 #[derive(Debug, PartialEq)]
+pub enum Statment {
+    Bind(Bind),
+    Type(Type)
+}
+
+#[derive(Debug, PartialEq)]
 pub enum Expr {
     Identifier(Identifier),
+    Id(Identifier),
+    App(Identifier, Vec<Expr>),
     Condition(Box<Expr>, Box<Expr>, Box<Expr>),
     Let(Vec<Bind>, Box<Expr>),
     Match(Box<Expr>, Vec<(Box<Expr>, Box<Expr>)>),
     Literal(Literal),
     Builtin(Builtin),
-    Lambda(Vec<Types>, Box<Expr>),
+    Lambda(Vec<Pattern>, Box<Expr>),
     List(Vec<Expr>),
     Tuple(Vec<Expr>)
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Bind(Identifier, Expr);
+pub struct TypeAssign(pub Identifier, pub Types);
+
+#[derive(Debug, PartialEq)]
+pub struct Bind(pub Identifier, pub Expr);
 
 #[derive(Debug, PartialEq)]
 pub struct Identifier(pub String);
@@ -33,19 +44,18 @@ pub enum Builtin {
     And, // &&
     Or, // ||
     Pipe,
-    Colon,
-    Lambda // \
+    Colon
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Type { // data X a b = A a | B b
-    name: String, // X
-    typevars: Vec<Identifier>, // [a, b]
-    variants: Vec<Variant> // [[A, [a]], [B, [b]]]
+pub struct Type { // type X a b = A a | B b
+    pub name: Identifier, // X
+    pub typevars: Vec<Identifier>, // [a, b]
+    pub variants: Vec<Variant> // [[A, [a]], [B, [b]]]
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Variant(String, Vec<Types>);
+pub struct Variant(pub Identifier, pub Vec<Types>);
 
 #[derive(Debug, PartialEq)]
 pub enum Types {
@@ -61,6 +71,16 @@ pub enum Types {
     /// )
     App(Box<Types>, Vec<Types>)
 }
+
+#[derive(Debug, PartialEq)]
+pub enum Pattern {
+    ListCons(Box<Pattern>, Box<Pattern>), // :
+    Wildcard, // _
+    Variable(Identifier), // x, xs
+    Id(Identifier), // Integer, Maybe
+    App(Box<Pattern>, Vec<Pattern>), // Either a (x:xs)
+    Literal(Literal) // 2
+  }
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {

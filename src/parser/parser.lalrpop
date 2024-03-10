@@ -3,10 +3,65 @@ use std::str::FromStr;
 
 grammar;
 
+pub Statment: Statment = {
+    #[precedence(level = "0")]
+    Type => Statment::Type(<>),
+
+    #[precedence(level = "1")]
+    Bind => Statment::Bind(<>),
+}
+
 pub Expr: Expr = {
-    Literal => Expr::Literal(<>),
+    #[precedence(level = "0")]
+    PCIdentifier => Expr::Id(<>),
     Identifier => Expr::Identifier(<>),
-    Builtin => Expr::Builtin(<>)
+    <n:PCIdentifier> "(" <v:Expr+> ")" => Expr::App(n, v),
+
+    #[precedence(level = "1")]
+    Literal => Expr::Literal(<>),
+    Builtin => Expr::Builtin(<>),
+    "[" <Exprs> "]" => Expr::List(<>),
+    "(" <Exprs> ")" => Expr::Tuple(<>),
+    Lambda => <>,
+    Let => <>,
+    Condition => <>,
+    Match => <>
+}
+
+Exprs: Vec<Expr> = {
+    <mut v:(<Expr> ",")*> <e:Expr?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+}
+
+pub Bind: Bind = {
+    "decl" <n:Identifier> <v:Pattern*> "=" <e:Expr> => if !v.is_empty() {
+        Bind(n, Expr::Lambda(v, Box::new(e)))
+    } else {
+        Bind(n, e)
+    }
+}
+
+TypesAssign: Types = {
+    <mut v:(<Expr> ",")*> <e:Expr?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+}
+
+pub TypeAssign: TypeAssing = {
+    Identifier "::" <v:>
+}
+
+pub PCIdentifier: Identifier = { 
+    <r"[A-Z][a-zA-Z0-9]*"> => Identifier(<>.to_owned())
 }
 
 pub Identifier: Identifier = {
@@ -28,8 +83,7 @@ pub Builtin: Builtin = {
     "&&" => Builtin::And,
     "||" => Builtin::Or,
     "|" => Builtin::Pipe,
-    ":" => Builtin::Colon,
-    "\\" => Builtin::Lambda
+    ":" => Builtin::Colon
 }
 
 pub Literal: Literal = {
@@ -41,4 +95,98 @@ pub Literal: Literal = {
     "False" => Literal::Bool(Bool::False)
 }
 
-pub Program: Vec<Expr> = Expr*;
+pub Variant: Variant = {
+    <n:PCIdentifier> <v:Types*> => Variant(n, v)
+}
+
+pub Types: Types = {
+    #[precedence(level = "0")]
+    PCIdentifier => Types::Id(<>),
+
+    #[precedence(level = "1")]
+    Identifier => Types::Generic(<>),
+
+    #[precedence(level = "2")]
+    <c:PCIdentifier> "(" <v:Types+> ")" => Types::App(Box::new(Types::Id(c)), v)
+}
+
+pub Type: Type = {
+    "type" <n: PCIdentifier> <tv:Identifier*> "=" <mut vs:(<Variant> "|")*> <v:Variant?> =>
+        match v {
+            None => Type {
+                name: n,
+                typevars: tv,
+                variants: vs
+            },
+            Some(v) => {
+                vs.push(v);
+                Type {
+                    name: n,
+                    typevars: tv,
+                    variants: vs
+                }
+            }
+        }
+}
+
+pub Pattern: Pattern = {
+    #[precedence(level = "0")]
+    "_" => Pattern::Wildcard,
+    <i:PCIdentifier> <v:("(" Pattern+ ")")?> => {
+        let v = v.map(|x| x.1).unwrap_or(Vec::new());
+        if !v.is_empty() {
+            Pattern::App(Box::new(Pattern::Id(i)), v)
+        } else {
+            Pattern::Id(i)
+        }
+    },
+    Identifier => Pattern::Variable(<>),
+    Literal => Pattern::Literal(<>),
+
+    #[precedence(level = "1")] #[assoc(side = "left")]
+    <p1:Pattern> ":" <p2:Pattern> => Pattern::ListCons(Box::new(p1), Box::new(p2))
+}
+
+pub Binds: Vec<Bind> = {
+    <mut v:(<Bind> ";")+> <e:Bind?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+}
+
+pub Let: Expr = {
+    "let" <binds: Binds> "in" <e:Expr> => Expr::Let(binds, Box::new(e))
+}
+
+pub Condition: Expr = {
+    "if" <_if:Expr> "then" <_then:Expr> "else" <_else:Expr> =>
+        Expr::Condition(Box::new(_if), Box::new(_then), Box::new(_else))
+}
+
+pub Check: (Box<Expr>, Box<Expr>) = {
+    "|" <a: Expr> "->" <b: Expr> => (Box::new(a), Box::new(b))
+}
+
+// pub Matching: Vec<(Box<Expr>, Box<Expr>)> = {
+//     <mut v:(<Check> "\n")*> <t:Check?> => match t {
+//         None => v,
+//         Some((a, b)) => {
+//             v.push((a, b));
+//             v
+//         }
+//     }
+// }
+
+pub Match: Expr = {
+    "match" <e:Expr> "with" <v:Check+> "." =>
+        Expr::Match(Box::new(e), v)
+}
+
+pub Lambda: Expr = {
+    "\\" <v:Pattern+> "->" <e:Expr> => Expr::Lambda(v, Box::new(e))
+}
+
+pub Program: Vec<Statment> = Statment*;
