@@ -1,7 +1,8 @@
 #[derive(Debug, PartialEq)]
 pub enum Statment {
     Bind(Bind),
-    Type(Type)
+    Type(Type),
+    TypeAssign(TypeAssign)
 }
 
 #[derive(Debug, PartialEq)]
@@ -69,7 +70,7 @@ pub enum Types {
     ///     Id("Integer")
     ///   ]
     /// )
-    App(Box<Types>, Vec<Types>)
+    Arr(Vec<Types>, Box<Types>)
 }
 
 #[derive(Debug, PartialEq)]

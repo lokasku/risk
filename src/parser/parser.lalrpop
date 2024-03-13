@@ -8,27 +8,30 @@ pub Statment: Statment = {
     Type => Statment::Type(<>),
 
     #[precedence(level = "1")]
-    Bind => Statment::Bind(<>),
+    "decl" <Bind> => Statment::Bind(<>),
+
+    TypeAssign => Statment::TypeAssign(<>)
 }
 
 pub Expr: Expr = {
     #[precedence(level = "0")]
     PCIdentifier => Expr::Id(<>),
     Identifier => Expr::Identifier(<>),
-    <n:PCIdentifier> "(" <v:Expr+> ")" => Expr::App(n, v),
+    <n:PCIdentifier> <v:Expr+> => Expr::App(n, v),
 
     #[precedence(level = "1")]
     Literal => Expr::Literal(<>),
     Builtin => Expr::Builtin(<>),
-    "[" <Exprs> "]" => Expr::List(<>),
-    "(" <Exprs> ")" => Expr::Tuple(<>),
+    "[" <Comma> "]" => Expr::List(<>),
+    "(" <Expr> ")" => <>,
+    "(" <Comma> ")" => Expr::Tuple(<>),
     Lambda => <>,
     Let => <>,
     Condition => <>,
     Match => <>
 }
 
-Exprs: Vec<Expr> = {
+Comma: Vec<Expr> = {
     <mut v:(<Expr> ",")*> <e:Expr?> => match e {
         None => v,
         Some(e) => {
@@ -39,7 +42,7 @@ Exprs: Vec<Expr> = {
 }
 
 pub Bind: Bind = {
-    "decl" <n:Identifier> <v:Pattern*> "=" <e:Expr> => if !v.is_empty() {
+    <n:Identifier> <v:Pattern*> "=" <e:Expr> => if !v.is_empty() {
         Bind(n, Expr::Lambda(v, Box::new(e)))
     } else {
         Bind(n, e)
@@ -47,17 +50,17 @@ pub Bind: Bind = {
 }
 
 TypesAssign: Types = {
-    <mut v:(<Expr> ",")*> <e:Expr?> => match e {
-        None => v,
-        Some(e) => {
-            v.push(e);
-            v
+    <mut v:(<Types> "->")*> <e:Types?> => match e {
+        None => {
+            let last = v.pop().expect("Expected at least one type");
+            Types::Arr(v, Box::new(last))
         }
+        Some(e) => Types::Arr(v, Box::new(e))
     }
 }
 
-pub TypeAssign: TypeAssing = {
-    Identifier "::" <v:>
+pub TypeAssign: TypeAssign = {
+    "@" <Identifier> "::" <TypesAssign> => TypeAssign(<>)
 }
 
 pub PCIdentifier: Identifier = { 
@@ -89,8 +92,8 @@ pub Builtin: Builtin = {
 pub Literal: Literal = {
     <r"[+-]?\d+\.\d+"> => Literal::Float(f64::from_str(<>).expect("Expected floating point number")),
     <r"[+-]?\d+"> => Literal::Integer(<>.parse::<i64>().expect("Expected an integer")),
-    <r#"".*""#> => Literal::String(<>[1..(<>.len()-1)].to_owned()),
-    <r"'.'"> => Literal::Char(<>[1..(<>.len()-1)].chars().next().expect("Expected a character")), // r"'[^']*'"
+    <r#""[^"]*""#> => Literal::String(<>[1..(<>.len()-1)].to_owned()),
+    <r"'[^']'"> => Literal::Char(<>[1..(<>.len()-1)].chars().next().expect("Expected a character")),
     "True" => Literal::Bool(Bool::True),
     "False" => Literal::Bool(Bool::False)
 }
@@ -107,7 +110,7 @@ pub Types: Types = {
     Identifier => Types::Generic(<>),
 
     #[precedence(level = "2")]
-    <c:PCIdentifier> "(" <v:Types+> ")" => Types::App(Box::new(Types::Id(c)), v)
+    <c:PCIdentifier> "(" <v:Types+> ")" => Types::Arr(v, Box::new(Types::Id(c)))
 }
 
 pub Type: Type = {
@@ -190,3 +193,4 @@ pub Lambda: Expr = {
 }
 
 pub Program: Vec<Statment> = Statment*;
+// pub Program: Vec<Literal> = Literal*;

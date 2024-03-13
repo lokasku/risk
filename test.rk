@@ -1,4 +1,23 @@
-type X a b = A Either (c d) | B Maybe (Integer)
-type Y = C | D
-decl a = 2
-decl a = [Left (a b), 2, "hello"]
+type X a b = A a | B b
+
+@f :: c -> b -> Maybe (c) -> Integer
+decl f x:xs Just (x) = let a = 1; b = 2; in a
+
+@a :: Integer
+decl a = match 2 with
+            | 0 -> 'a'
+            | 1 -> 'b'
+            | 2 -> 'c' .
+
+@b :: String
+decl b = if "ok" then "ok" else "ok"
+
+@c :: a -> a
+decl c = \x -> x
+
+decl corentin _ = \a -> "coucou"
+
+
+(f a) b 
+f a b
+a + e
