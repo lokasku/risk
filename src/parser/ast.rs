@@ -1,87 +1,97 @@
 #[derive(Debug, PartialEq)]
 pub enum Statment {
     Bind(Bind),
-    Type(Type),
+    TypeDecl(TypeDecl),
     TypeAssign(TypeAssign)
 }
 
 #[derive(Debug, PartialEq)]
 pub enum Expr {
-    Identifier(Identifier),
-    Id(Identifier),
-    App(Identifier, Vec<Expr>),
+    Identifier(Identifier), // e.g. foo
+    Id(Identifier), // e.g.  Maybe
+    App(Box<Expr>, Vec<Expr>),
     Condition(Box<Expr>, Box<Expr>, Box<Expr>),
     Let(Vec<Bind>, Box<Expr>),
-    Match(Box<Expr>, Vec<(Box<Expr>, Box<Expr>)>),
+    Match(Box<Expr>, Vec<(Box<Pattern>, Box<Expr>)>),
     Literal(Literal),
-    Builtin(Builtin),
+    BinOp(BinOp, Box<Expr>, Box<Expr>),
     Lambda(Vec<Pattern>, Box<Expr>),
+    Ann(Box<Expr>, Type),
     List(Vec<Expr>),
-    Tuple(Vec<Expr>)
+    Tuple(Vec<Expr>),
 }
 
+////////// Type Assignment 
+
 #[derive(Debug, PartialEq)]
-pub struct TypeAssign(pub Identifier, pub Types);
+pub struct TypeAssign(pub Identifier, pub Type);
+
+////////// Bind
 
 #[derive(Debug, PartialEq)]
 pub struct Bind(pub Identifier, pub Expr);
 
+////////// Identifier
+
 #[derive(Debug, PartialEq)]
 pub struct Identifier(pub String);
 
-#[derive(Debug, PartialEq)]
-pub enum Builtin {
-    Plus, 
-    Minus,
-    Div,
-    Mod,
-    Exp, // ^
-    LT, // <
-    GT, // >
-    GE, // >=
-    LE, // <=
-    Eq, // ==
-    Ineq, // /=
-    And, // &&
-    Or, // ||
-    Pipe,
-    Colon
-}
+////////// Binary Operator
 
 #[derive(Debug, PartialEq)]
-pub struct Type { // type X a b = A a | B b
+pub enum BinOp {
+    Add,
+    Sub,
+    Div,
+    Mul,
+    Mod,
+    Exp,
+    LessThan,
+    GreaterThan,
+    LessThanOrEq,
+    GreaterThanOrEq,
+    Eq,
+    Ineq,
+    And,
+    Or,
+    ListCons
+}
+
+////////// Type Declaration
+
+#[derive(Debug, PartialEq)]
+pub struct Variant(pub Identifier, pub Vec<Type>);
+
+#[derive(Debug, PartialEq)]
+pub struct TypeDecl { // type X a b = A a | B b
     pub name: Identifier, // X
     pub typevars: Vec<Identifier>, // [a, b]
     pub variants: Vec<Variant> // [[A, [a]], [B, [b]]]
 }
 
-#[derive(Debug, PartialEq)]
-pub struct Variant(pub Identifier, pub Vec<Types>);
+////////// Type
 
 #[derive(Debug, PartialEq)]
-pub enum Types {
-    Generic(Identifier), // Generic(Integer("a"))
-    Id(Identifier), // Id(Identifier("Integer"))
-
-    /// App(
-    ///   Id("Maybe"),
-    ///   [
-    ///     Generic("a"),
-    ///     Id("Integer")
-    ///   ]
-    /// )
-    Arr(Vec<Types>, Box<Types>)
+pub enum Type {
+    Generic(Identifier),
+    Id(Identifier),
+    App(Box<Type>, Vec<Type>),
+    Tuple(Vec<Type>)
 }
+
+////////// Pattern
 
 #[derive(Debug, PartialEq)]
 pub enum Pattern {
-    ListCons(Box<Pattern>, Box<Pattern>), // :
-    Wildcard, // _
-    Variable(Identifier), // x, xs
-    Id(Identifier), // Integer, Maybe
-    App(Box<Pattern>, Vec<Pattern>), // Either a (x:xs)
-    Literal(Literal) // 2
-  }
+    ListCons(Box<Pattern>, Box<Pattern>),
+    Wildcard,
+    Variable(Identifier),
+    Id(Identifier),
+    App(Box<Pattern>, Vec<Type>),
+    Literal(Literal)
+}
+
+////////// Literal
 
 #[derive(Debug, PartialEq)]
 pub enum Literal {

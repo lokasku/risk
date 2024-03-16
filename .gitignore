@@ -1,4 +1,6 @@
 /target
 .direnv
 /test
-test.lz
+test.rk
+syntax.lisp
+BRAINSTORM.md
