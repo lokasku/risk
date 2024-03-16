@@ -1,8 +1,5 @@
 /target
 .direnv
 /test
-test.rk
-BRAINSTORM.md
-output.txt
 archive/
 .vscode/
