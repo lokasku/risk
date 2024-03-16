@@ -1,5 +1,5 @@
-use lalrpop_util::lalrpop_mod;
+// use lalrpop_util::lalrpop_mod;
 
 mod ast;
 
-lalrpop_mod!(pub parser, "/parser/parser.rs");
+// lalrpop_mod!(pub parser, "/parser/parser.rs");

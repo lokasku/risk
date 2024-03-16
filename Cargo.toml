@@ -10,8 +10,8 @@ keywords = ["pl", "fp", "language"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[build-dependencies]
-lalrpop = "0.20.0"
+# [build-dependencies]
+# lalrpop = "0.20.0"
 
-[dependencies]
-lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }
+# [dependencies]
+# lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }

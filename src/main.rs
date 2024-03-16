@@ -11,8 +11,8 @@ fn main() {
 
     let content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
 
-    let parser = parser::parser::ProgramParser::new();
-    let res = parser.parse(&content);
-    println!("{:#?}", res);
+    // let parser = parser::parser::ProgramParser::new();
+    // let res = parser.parse(&content);
+    // println!("{:#?}", res);
     println!("hello");
 }

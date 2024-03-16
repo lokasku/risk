@@ -2,5 +2,7 @@
 .direnv
 /test
 test.rk
-syntax.lisp
 BRAINSTORM.md
+output.txt
+archive/
+.vscode/
