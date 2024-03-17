@@ -124,6 +124,9 @@ impl Program {
     }
     
     pub fn from_pairs(pairs: Pairs<Rule>) -> Self {
-        todo!()
+        for pair in pairs {
+            println!("{:#?}", pair);
+        }
+        Program::new(Vec::new())
     }
 }

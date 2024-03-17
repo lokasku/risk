@@ -1,13 +1,27 @@
-lower = { 'a'..'z' }
-upper = { 'A'..'Z' }
-alpha = { lower | upper }
-digit = { '0'..'9' }
-int = { digit+ }
+// Comment & whitespace
+COMMENT = _{ ("/*" ~ (!"*/" ~ ANY)* ~ "*/") | ("//" ~ (!"\n" ~ ANY)*) }
+WHITESPACE = _{ " " | "\t" | "\n" }
 
-ident = { alpha+ | digit+ | "_" }
-pc_id = { upper ~ alpha* }
+// Literals
+//// Numbers
+int = { ASCII_DIGIT+ }
+float = { ASCII_DIGIT+ ~ (".") ~ (ASCII_DIGIT*)? }
+num = { ("+" ~ "-")? ~ (int | float) }
 
-expr = { ident | pc_id | int | paren }
+//// String
+string = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+
+//// Character
+character = { "'" ~ (!"'" ~ ANY) ~ "'" }
+
+//// Bool
+true = { "True" }
+false = { "False" }
+
+ident = { ASCII_ALPHA+ | ASCII_DIGIT+ | "_" }
+pc_id = { upper ~ ASCII_ALPHA* }
+
+expr = { ident | pc_id | num | paren }
 paren = { "(" ~ expr ~ ")" }
 
 type_decl = { "type" ~ pc_id ~ ident* ~ "=" ~ variant+ }
@@ -20,6 +34,6 @@ group_type = { "{" ~ type_ ~ "}" }
 app_type = { simple_type ~ simple_type+ }
 tuple_type = { "(" ~ type_+ ~ ")" }
 
-stmt = { type_decl | expr }
+stmt = { string | character | type_decl | expr }
 
 program = { stmt* }
