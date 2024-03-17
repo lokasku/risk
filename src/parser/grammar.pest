@@ -1,0 +1,25 @@
+lower = { 'a'..'z' }
+upper = { 'A'..'Z' }
+alpha = { lower | upper }
+digit = { '0'..'9' }
+int = { digit+ }
+
+ident = { alpha+ | digit+ | "_" }
+pc_id = { upper ~ alpha* }
+
+expr = { ident | pc_id | int | paren }
+paren = { "(" ~ expr ~ ")" }
+
+type_decl = { "type" ~ pc_id ~ ident* ~ "=" ~ variant+ }
+variant = { pc_id ~ type_+ }
+
+
+type_ = { simple_type | app_type }
+simple_type = { ident | pc_id | group_type | tuple_type }
+group_type = { "{" ~ type_ ~ "}" }
+app_type = { simple_type ~ simple_type+ }
+tuple_type = { "(" ~ type_+ ~ ")" }
+
+stmt = { type_decl | expr }
+
+program = { stmt* }
