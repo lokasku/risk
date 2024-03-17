@@ -1,3 +1,6 @@
+use pest::iterators::Pairs;
+use crate::parser::Rule;
+
 #[derive(Debug, PartialEq)]
 pub enum Statment {
     Bind(Bind),
@@ -106,4 +109,21 @@ pub enum Literal {
 pub enum Bool {
     True,
     False
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Program {
+    pub statements: Vec<Statment>
+}
+
+impl Program {
+    pub fn new(statements: Vec<Statment>) -> Self {
+        Program {
+            statements
+        }
+    }
+    
+    pub fn from_pairs(pairs: Pairs<Rule>) -> Self {
+        todo!()
+    }
 }

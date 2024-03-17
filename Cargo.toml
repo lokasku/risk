@@ -8,10 +8,7 @@ repository = "https://github.com/Lokasku/risk"
 license = "GPL-3.0"
 keywords = ["pl", "fp", "language"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-# [build-dependencies]
-# lalrpop = "0.20.0"
-
-# [dependencies]
-# lalrpop-util = { version = "0.20.0", features = ["lexer", "unicode"] }
+[dependencies]
+pest = "2.7.8"
+pest_derive = "2.7.8"
