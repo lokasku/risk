@@ -78,7 +78,7 @@ pub struct TypeDecl { // type X a b = A a | B b
 pub enum Type {
     Generic(Identifier),
     Id(Identifier),
-    App(Box<Type>, Vec<Type>),
+    App(Identifier, Vec<Type>),
     Tuple(Vec<Type>)
 }
 
@@ -90,7 +90,7 @@ pub enum Pattern {
     Wildcard,
     Variable(Identifier),
     Id(Identifier),
-    App(Box<Pattern>, Vec<Type>),
+    App(Identifier, Vec<Type>),
     Literal(Literal)
 }
 
