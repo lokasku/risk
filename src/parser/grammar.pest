@@ -20,46 +20,44 @@ false_ = { "False" }
 literals = { float | int | string | character | true_ | false_ }
 
 // Builtins
-paren_expr = { "(" ~ comparison ~ ")" }
-term = _{ paren_expr | literals | ident }
 
-mul_div = { term ~ (mul ~ term | div ~ term)* }
-add_sub = { mul_div ~ (add ~ mul_div | sub ~ mul_div)* }
-comparison = {
-    add_sub ~ (
-        lt ~ add_sub
-        | gt ~ add_sub
-        | gte ~ add_sub
-        | lte ~ add_sub
-        | eq ~ add_sub
-        | neq ~ add_sub
-    )*
+binop = { simple_expr ~ add_sub ~ factor | factor }
+factor = { simple_expr ~ mul_div ~ cmpop | cmpop }
+cmpop = { simple_expr ~ cmp ~ expr | simple_expr }
+add_sub = _{ add | sub }
+mul_div = _{ mul | div }
+cmp = _{ lt | gt | lte | gte | eq | neq }
+op = _{ add_sub | mul_div | cmp | mod_ | exp }
+lt = @{ "<" }
+gt = @{ ">" }
+gte = @{ ">=" }
+lte = @{ "<=" }
+and = @{ "&&" }
+or = @{ "||" }
+eq = @{ "==" }
+neq = @{ "/=" }
+colon = @{ ":" }
+add = @{ "+" }
+sub = @{ "-" }
+mul = @{ "*" }
+div = @{ "/" }
+exp = @{ "^" }
+mod_ = @{ "%" }
+
+keyword = _{
+    "let" |
+    "in" |
+    "if" |
+    "then" |
+    "else" |
+    "type"
 }
-
-builtins = { lt | gt | gte | lte | and | or | eq | neq | colon | add | sub | mul | div | exp | mod_ }
-
-lt = { "<" }
-gt = { ">" }
-gte = { ">=" }
-lte = { "<=" }
-and = { "&&" }
-or = { "||" }
-eq = { "==" }
-neq = { "/=" }
-colon = { ":" }
-add = { "+" }
-sub = { "-" }
-mul = { "*" }
-div = { "/" }
-exp = { "^" }
-mod_ = { "%" }
-
 // Identifiers
-ident = @{ ASCII_ALPHA_LOWER ~ ASCII_ALPHANUMERIC* }
-pc_id = @{ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC* }
+ident = @{ !(keyword) ~ ASCII_ALPHA_LOWER ~ ASCII_ALPHANUMERIC* }
+pc_id = @{ !(keyword) ~ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC* }
 
 // Type
-type_ = { function_type | simple_type }
+type_ = _{ function_type | simple_type }
 simple_type = { app_type | ident | pc_id | group_type | tuple_type }
 group_type = { "{" ~ type_ ~ "}" }
 app_type = { pc_id ~ type_+ }
@@ -84,27 +82,28 @@ list_cons_pattern = { simple_pattern ~ ":" ~ pattern }
 bind = { ident ~ pattern* ~ "=" ~ expr }
 
 // Expr
-expr = { simple_expr | annotation }
-simple_expr = { let_ | condition | lambda | match_ | app_expr | fundamentals | comparison }
+expr = _{ binop | simple_expr | annotation  }
+simple_expr = _{ let_ | condition | lambda | match_ | app_expr | fundamentals }
 let_ = { "let" ~ (bind ~ ";")* ~ bind ~ "in" ~ expr }
 condition = { "if" ~ expr ~ "then" ~ expr ~ "else" ~ expr }
 lambda = { "\\" ~ pattern+ ~ "->" ~ expr }
 match_ = { "match" ~ expr ~ "in" ~ ("|" ~ pattern ~ "->" ~ expr ~ "\n"?)+ }
 app_expr = { (ident | pc_id) ~ fundamentals+ }
 annotation = { simple_expr ~ "::" ~ type_ }
-fundamentals = {
+list_expr = { "[" ~ (expr ~ ",")* ~ expr ~ "]" }
+tuple_expr  = { "(" ~ (expr ~ ",")* ~ expr ~ ")" }
+fundamentals = _{
     literals
     | pc_id
-    | ident ~ !builtins
-    | "(" ~ ((expr ~ ",")* ~ expr) ~ ")"
-    | "[" ~ ((expr ~ ",")* ~ expr) ~ "]"
+    | ident
+    | list_expr
+    | tuple_expr
 }
 
 stmt = {
-    expr
-    | bind
+bind
     | type_decl
     | type_assign
 }
 
-program = { stmt+ }
+program = _{ stmt+ }
