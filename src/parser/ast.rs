@@ -481,7 +481,7 @@ pub enum Pattern {
     Wildcard(Span),
     Variable(Identifier),
     Id(Identifier),
-    App(Box<Pattern>, Vec<Type>, Span),
+    App(Identifier, Vec<Type>, Span),
     Literal(Literal)
 }
 
@@ -515,13 +515,13 @@ impl Pattern {
 
             Rule::app_pattern => {
                 let mut inner = pair.into_inner();
-                let head = Pattern::from_pair(inner.next().unwrap());
+                let head = Identifier::from_pair(inner.next().unwrap());
                 let mut types = Vec::new();
                 for e in inner {
                     let ty = Type::from_pair(e);
                     types.push(ty);
                 }
-                Pattern::App(Box::new(head), types, span)
+                Pattern::App(head, types, span)
             },
 
             e => panic!("Invalid pattern: {:?}", e)
