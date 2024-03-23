@@ -1,7 +1,7 @@
 // use lazy_static::lazy_static;
 
 use pest_derive::Parser;
-// use pest::pratt_parser::PrattParser;
+// use pest::pratt_parser::{PrattParser, Assoc, Op};
 use pest::Parser;
 mod ast;
 
@@ -11,13 +11,7 @@ struct RiskParser;
 
 // lazy_static! {
 //     pub static ref PRATT_PARSER: PrattParser<Rule> = {
-//         use Rule::*;
-//         use pest::pratt_parser::Assoc;
-//         use pest::pratt_parser::Op;
-
 //         PrattParser::new()
-//             .op(Op::infix(Rule::function_type, Assoc::Left))
-//             // .op(Op::infix(Rule::annotation, Assoc::Left))
 //     };
 // }
 

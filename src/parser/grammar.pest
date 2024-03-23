@@ -4,8 +4,8 @@ WHITESPACE = _{ " " | NEWLINE }
 
 // Literals
 /////////// Numbers
-int = { ("+" | "-")? ~ ASCII_DIGIT+ }
-float = { ("+" | "-")? ~ ASCII_DIGIT+ ~ (".") ~ (ASCII_DIGIT*)? }
+int = @{ ("+" | "-")? ~ ASCII_DIGIT+ }
+float = @{ ("+" | "-")? ~ ASCII_DIGIT+ ~ (".") ~ (ASCII_DIGIT*)? }
 
 /////////// String
 string = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
@@ -18,6 +18,41 @@ true_ = { "True" }
 false_ = { "False" }
 
 literals = { float | int | string | character | true_ | false_ }
+
+// Builtins
+paren_expr = { "(" ~ comparison ~ ")" }
+term = _{ paren_expr | literals | ident }
+
+mul_div = { term ~ (mul ~ term | div ~ term)* }
+add_sub = { mul_div ~ (add ~ mul_div | sub ~ mul_div)* }
+comparison = {
+    add_sub ~ (
+        lt ~ add_sub
+        | gt ~ add_sub
+        | gte ~ add_sub
+        | lte ~ add_sub
+        | eq ~ add_sub
+        | neq ~ add_sub
+    )*
+}
+
+builtins = { lt | gt | gte | lte | and | or | eq | neq | colon | add | sub | mul | div | exp | mod_ }
+
+lt = { "<" }
+gt = { ">" }
+gte = { ">=" }
+lte = { "<=" }
+and = { "&&" }
+or = { "||" }
+eq = { "==" }
+neq = { "/=" }
+colon = { ":" }
+add = { "+" }
+sub = { "-" }
+mul = { "*" }
+div = { "/" }
+exp = { "^" }
+mod_ = { "%" }
 
 // Identifiers
 ident = @{ ASCII_ALPHA_LOWER ~ ASCII_ALPHANUMERIC* }
@@ -50,23 +85,24 @@ bind = { ident ~ pattern* ~ "=" ~ expr }
 
 // Expr
 expr = { simple_expr | annotation }
-simple_expr = { let_ | condition | lambda | match_ | app_expr | fundamentals }
+simple_expr = { let_ | condition | lambda | match_ | app_expr | fundamentals | comparison }
 let_ = { "let" ~ (bind ~ ";")* ~ bind ~ "in" ~ expr }
 condition = { "if" ~ expr ~ "then" ~ expr ~ "else" ~ expr }
 lambda = { "\\" ~ pattern+ ~ "->" ~ expr }
 match_ = { "match" ~ expr ~ "in" ~ ("|" ~ pattern ~ "->" ~ expr ~ "\n"?)+ }
-app_expr = { fundamentals ~ fundamentals+ }
+app_expr = { (ident | pc_id) ~ fundamentals+ }
 annotation = { simple_expr ~ "::" ~ type_ }
 fundamentals = {
     literals
     | pc_id
-    | ident
+    | ident ~ !builtins
     | "(" ~ ((expr ~ ",")* ~ expr) ~ ")"
     | "[" ~ ((expr ~ ",")* ~ expr) ~ "]"
 }
 
 stmt = {
-    bind
+    expr
+    | bind
     | type_decl
     | type_assign
 }
