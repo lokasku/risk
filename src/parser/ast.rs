@@ -139,6 +139,55 @@ impl Expr {
                 }
                 Expr::Tuple(exprs, span)
             },
+            Rule::binop => {
+                if inner.len() == 1 {
+                    return Expr::from_pair(inner.next().unwrap());
+                }
+                let lhs = Expr::from_pair(inner.next().unwrap());
+                let op = match inner.next().unwrap().as_str() {
+                    "+" => BinOp::Add,
+                    "-" => BinOp::Sub,
+                    e => panic!("Invalid operator: {:?}", e)
+                };
+                
+                let rhs = Expr::from_pair(inner.next().unwrap());
+                Expr::BinOp(op, Box::new(lhs), Box::new(rhs), span)
+            },
+            Rule::factor => {
+                if inner.len() == 1 {
+                    return Expr::from_pair(inner.next().unwrap());
+                }
+                let lhs = Expr::from_pair(inner.next().unwrap());
+                let op = match inner.next().unwrap().as_str() {
+                    "*" => BinOp::Mul,
+                    "/" => BinOp::Div,
+                    "%" => BinOp::Mod,
+                    e => panic!("Invalid operator: {:?}", e)
+                };
+                
+                let rhs = Expr::from_pair(inner.next().unwrap());
+                
+                Expr::BinOp(op, Box::new(lhs), Box::new(rhs), span)
+            },
+            Rule::cmpop => {
+                if inner.len() == 1 {
+                    return Expr::from_pair(inner.next().unwrap());
+                }
+                let lhs = Expr::from_pair(inner.next().unwrap());
+                let op = match inner.next().unwrap().as_str() {
+                    "<" => BinOp::LessThan,
+                    ">" => BinOp::GreaterThan,
+                    "<=" => BinOp::LessThanOrEq,
+                    ">=" => BinOp::GreaterThanOrEq,
+                    "==" => BinOp::Eq,
+                    "!=" => BinOp::Ineq,
+                    e => panic!("Invalid operator: {:?}", e)
+                };
+                
+                let rhs = Expr::from_pair(inner.next().unwrap());
+                
+                Expr::BinOp(op, Box::new(lhs), Box::new(rhs), span)
+            },
             e => panic!("Invalid expression: {:?}", e)
         }
 
