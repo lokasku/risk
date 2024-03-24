@@ -1,6 +1,8 @@
 use std::fs;
 use std::env;
-use parser::parser;
+use logos::Logos;
+// use parser::parser;
+use parser::lexer::*;
 use chumsky::Parser;
 
 mod parser;
@@ -13,5 +15,9 @@ fn main() {
 
     let content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
 
-    println!("{:?}", parser().parse(content));
+    let mut lexer = TType::lexer(&content);
+
+    println!("{:?}", lexer.next());
+
+    // println!("{:?}", parser().parse(content));
 }

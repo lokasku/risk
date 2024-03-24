@@ -11,3 +11,4 @@ keywords = ["pl", "fp", "language"]
 
 [dependencies]
 chumsky = "0.9.3"
+logos = "0.14.0"
