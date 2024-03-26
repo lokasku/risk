@@ -1,11 +1,11 @@
-use logos::{Logos /* , Lexer as LLexer */};
+use logos::{Logos  , Lexer as LLexer };
 
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Copy, Clone)]
 // #[logos(error = Error)]
 #[logos(skip r"/[*]([^*]|([*][^/]))*[*]/")] /* ... */
 #[logos(skip r"\/\/.*")] //
 #[logos(skip r"[ \t\n\f]+")]
-pub enum TType<'a> {
+pub enum Token<'a> {
     
     // Keywords
 
@@ -42,7 +42,7 @@ pub enum TType<'a> {
     Float(f64),
 
     #[regex("\"[^\"]+\"", |lex| lex.slice()[1..lex.slice().len() - 1].to_owned())]
-    String(String),
+    String(&'a str),
 
     #[regex("'[^']'", |lex| &lex.slice()[1..lex.slice().len() - 1])]
     Char(&'a str),
@@ -125,10 +125,21 @@ pub enum TType<'a> {
     Exp,
 
     #[token("%")]
-    Mod
+    Mod,
+    
+    #[token("=")]
+    Assign
+}
+pub struct Lexer<'a> {
+    pub lexer: LLexer<'a, Token<'a>>,
+    // pub errors: Vec<Error>
 }
 
-// pub struct Lexer<'a> {
-//     pub lexer: LLexer<'a, TType<'a>>,
-//     // pub errors: Vec<Error>
-// }
+pub fn lexer<'a>(input: &'a str) -> Vec<Token> {
+    let mut lexer = Token::lexer(input);
+    let mut tokens = Vec::new();
+    while let Some(token) = lexer.next() {
+        tokens.push(token.unwrap());
+    }
+    tokens
+}
