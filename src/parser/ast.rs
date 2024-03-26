@@ -1,38 +1,19 @@
-////////// Span
-
-// #[derive(Debug, PartialEq)]
-// pub struct Span {
-//     pub start: usize,
-//     pub end: usize,
-//     pub input: String
-// }
-
-// impl Span {
-//     pub fn new(start: usize, end: usize, input: String) -> Self {
-//         Span {
-//             start,
-//             end,
-//             input
-//         }
-//     }
-// }
-
-////////// Program
-
 #[derive(Debug, PartialEq)]
-pub struct Program {
-    pub statements: Vec<Statment>
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+    pub input: String
 }
 
-impl Program {
-    pub fn new(statements: Vec<Statment>) -> Self {
-        Program {
-            statements
+impl Span {
+    pub fn new(start: usize, end: usize, input: String) -> Self {
+        Span {
+            start,
+            end,
+            input
         }
     }
 }
-
-////////// Statment
 
 #[derive(Debug, PartialEq)]
 pub enum Statment {
@@ -41,60 +22,57 @@ pub enum Statment {
     TypeAssign(TypeAssign)
 }
 
-////////// Expression
-
 #[derive(Debug, PartialEq)]
 pub enum Expr {
     Identifier(Identifier), // e.g. foo
     Id(Identifier), // e.g.  Maybe
     App(App),
-    Condition(Box<Expr>, Box<Expr>, Box<Expr>),
-    Let(Vec<Bind>, Box<Expr>),
-    Match(Box<Expr>, Vec<(Box<Pattern>, Box<Expr>)>),
+    Condition(Box<Expr>, Box<Expr>, Box<Expr>, Span),
+    Let(Vec<Bind>, Box<Expr>, Span),
+    Match(Box<Expr>, Vec<(Box<Pattern>, Box<Expr>)>, Span),
     Literal(Literal),
-    BinOp(BinOp, Box<Expr>, Box<Expr>),
-    Lambda(Vec<Pattern>, Box<Expr>),
-    Ann(Box<Expr>, Type),
-    List(Vec<Expr>),
-    Tuple(Vec<Expr>),
+    BinOp(BinOp, Box<Expr>, Box<Expr>, Span),
+    Lambda(Vec<Pattern>, Box<Expr>, Span),
+    Ann(Box<Expr>, Type, Span),
+    List(Vec<Expr>, Span),
+    Tuple(Vec<Expr>, Span),
 }
 
 
-// impl Expr {
-//     pub fn get_span(&self) -> &Span {
-//         match self {
-//             Expr::Identifier(id) => &id.span,
-//             Expr::Id(id) => &id.span,
-//             Expr::App(app) => &app.span,
-//             Expr::Condition(_, _, _) => span,
-//             Expr::Let(_, _) => span,
-//             Expr::Match(_, _) => span,
-//             Expr::Literal(lit) => &lit.span,
-//             Expr::BinOp(_, _, _) => span,
-//             Expr::Lambda(_, _) => span,
-//             Expr::Ann(_, _) => span,
-//             Expr::List(_) => span,
-//             Expr::Tuple(_) => span
-//         }
-//     }
-// }
+impl Expr {
+    pub fn get_span(&self) -> &Span {
+        match self {
+            Expr::Identifier(id) => &id.span,
+            Expr::Id(id) => &id.span,
+            Expr::App(app) => &app.span,
+            Expr::Condition(_, _, _, span) => span,
+            Expr::Let(_, _, span) => span,
+            Expr::Match(_, _, span) => span,
+            Expr::Literal(lit) => &lit.span,
+            Expr::BinOp(_, _, _, span) => span,
+            Expr::Lambda(_, _, span) => span,
+            Expr::Ann(_, _, span) => span,
+            Expr::List(_, span) => span,
+            Expr::Tuple(_, span) => span
+        }
+    }
+}
 
-////////// Application
 
 #[derive(Debug, PartialEq)]
 pub struct App {
     pub expr: Box<Expr>,
     pub args: Vec<Expr>,
-    // pub span: Span
+    pub span: Span
 
 }
 
 impl App {
-    pub fn new(expr: Expr, args: Vec<Expr>/*, span: Span*/) -> Self {
+    pub fn new(expr: Expr, args: Vec<Expr>, span: Span) -> Self {
         App {
             expr: Box::new(expr),
             args,
-            // span
+            span
         }
     }
 }
@@ -105,15 +83,15 @@ impl App {
 pub struct TypeAssign {
     pub id: Identifier,
     pub ty: Type,
-    // pub span: Span
+    pub span: Span
 }
 
 impl TypeAssign {
-    pub fn new(id: Identifier, ty: Type, /* span: Span */) -> Self {
+    pub fn new(id: Identifier, ty: Type, span: Span) -> Self {
         TypeAssign {
             id,
             ty,
-            // span
+            span
         }
     }
 }
@@ -123,8 +101,9 @@ impl TypeAssign {
 #[derive(Debug, PartialEq)]
 pub struct Bind {
     pub id: Identifier,
+    pub args: Vec<Pattern>,
     pub expr: Expr,
-    // pub span: Span
+    pub span: Span
 }
 
 ////////// Identifier
@@ -132,14 +111,14 @@ pub struct Bind {
 #[derive(Debug, PartialEq)]
 pub struct Identifier {
     pub name: String,
-    // pub span: Span
+    pub span: Span
 }
 
 impl Identifier {
-    pub fn new(name: String, /* span : Span */) -> Self {
+    pub fn new(name: String, span: Span) -> Self {
         Identifier {
             name,
-            // span
+            span
         }
     }
 }
@@ -165,7 +144,7 @@ pub enum BinOp {
     ListCons
 }
 
-////////// Type Declaration & Variants
+////////// Type Declaration
 
 #[derive(Debug, PartialEq)]
 pub struct Variant {
@@ -199,58 +178,58 @@ impl TypeDecl {
     }
 }
 
-////////// Types
+////////// Type
 
 #[derive(Debug, PartialEq)]
 pub enum Type {
     Generic(Identifier),
     Id(Identifier),
-    App(Identifier, Vec<Type>),
-    Tuple(Vec<Type>),
-    Func(Box<Type>, Vec<Type>)
+    App(Identifier, Vec<Type>, Span),
+    Tuple(Vec<Type>, Span),
+    Func(Box<Type>, Vec<Type>, Span)
 }
 
-// impl Type {
-//     pub fn get_span(&self) -> &Span {
-//         match self {
-//             Type::Generic(id) => &id.span,
-//             Type::Id(id) => &id.span,
-//             Type::App(_, _) => span,
-//             Type::Tuple(_) => span,
-//             Type::Func(_, _) => span
-//         }
-//     }
-// }
+impl Type {
+    pub fn get_span(&self) -> &Span {
+        match self {
+            Type::Generic(id) => &id.span,
+            Type::Id(id) => &id.span,
+            Type::App(_, _, span) => span,
+            Type::Tuple(_, span) => span,
+            Type::Func(_, _, span) => span
+        }
+    }
+}
 
 ////////// Pattern
 
 #[derive(Debug, PartialEq)]
 pub enum Pattern {
-    ListCons(Box<Pattern>, Box<Pattern>),
-    Wildcard,
+    ListCons(Box<Pattern>, Box<Pattern>, Span),
+    Wildcard(Span),
     Variable(Identifier),
     Id(Identifier),
-    App(Identifier, Vec<Type>),
+    App(Identifier, Vec<Type>, Span),
     Literal(Literal)
 }
 
-// impl Pattern {
-//     pub fn get_span(&self) -> &Span {
-//         match self {
-//             Pattern::ListCons(_, _) => span,
-//             Pattern::Wildcard(span) => span,
-//             Pattern::Variable(id) => &id.span,
-//             Pattern::Id(id) => &id.span,
-//             Pattern::App(_, _) => span,
-//             Pattern::Literal(lit) => &lit.span
-//         }
-//     }
-// }
+impl Pattern {
+    pub fn get_span(&self) -> &Span {
+        match self {
+            Pattern::ListCons(_, _, span) => span,
+            Pattern::Wildcard(span) => span,
+            Pattern::Variable(id) => &id.span,
+            Pattern::Id(id) => &id.span,
+            Pattern::App(_, _, span) => span,
+            Pattern::Literal(lit) => &lit.span
+        }
+    }
+}
 
 ////////// Literal
 
 #[derive(Debug, PartialEq)]
-pub enum Literal {
+pub enum LiteralKind {
     Integer(i64),
     Float(f64),
     String(String),
@@ -258,14 +237,27 @@ pub enum Literal {
     Bool(Bool)
 }
 
-// #[derive(Debug, PartialEq)]
-// pub struct Literal {
-//     pub lit: LiteralKind,
-//     // pub span: Span
-// }
+#[derive(Debug, PartialEq)]
+pub struct Literal {
+    pub lit: LiteralKind,
+    pub span: Span
+}
 
 #[derive(Debug, PartialEq)]
 pub enum Bool {
     True,
     False
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Program {
+    pub statements: Vec<Statment>
+}
+
+impl Program {
+    pub fn new(statements: Vec<Statment>) -> Self {
+        Program {
+            statements
+        }
+    }
 }

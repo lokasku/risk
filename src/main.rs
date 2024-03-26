@@ -3,7 +3,6 @@ use std::env;
 use logos::Logos;
 // use parser::parser;
 use parser::lexer::*;
-use chumsky::Parser;
 
 mod parser;
 
@@ -18,6 +17,4 @@ fn main() {
     let mut lexer = TType::lexer(&content);
 
     println!("{:?}", lexer.next());
-
-    // println!("{:?}", parser().parse(content));
 }

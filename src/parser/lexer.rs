@@ -1,4 +1,4 @@
-use logos::{Logos, Lexer as LLexer};
+use logos::{Logos /* , Lexer as LLexer */};
 
 #[derive(Logos, Debug, PartialEq)]
 // #[logos(error = Error)]
@@ -128,7 +128,7 @@ pub enum TType<'a> {
     Mod
 }
 
-pub struct Lexer<'a> {
-    pub lexer: LLexer<'a, TType<'a>>,
-    // pub errors: Vec<Error>
-}
+// pub struct Lexer<'a> {
+//     pub lexer: LLexer<'a, TType<'a>>,
+//     // pub errors: Vec<Error>
+// }
