@@ -85,7 +85,11 @@ impl<'a> Parser<'a> {
         self.tokens[self.current + 1].clone()
     }
     fn past(&self) -> lexer::Token<'a> {
-        self.tokens[self.current - 1].clone()
+        let mut n = 1;
+        while self.tokens[self.current - n].kind.is_whitespace() {
+            n += 1;
+        }
+        self.tokens[self.current - n].clone()
     }
 
     fn cut(&mut self) -> ast::Span {
@@ -244,7 +248,7 @@ impl<'a> Parser<'a> {
             let op = match self.past().kind {
                 lexer::TokenKind::Add => ast::BinOp::Add,
                 lexer::TokenKind::Sub => ast::BinOp::Sub,
-                _ => unreachable!()
+                e => panic!("Unexpected token: {:?}", e)
             };
             let rhs = self.parse_factor()?;
             lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
