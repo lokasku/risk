@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq)]
+use std::fmt::Display;
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -15,14 +17,20 @@ impl Span {
     }
 }
 
-#[derive(Debug, PartialEq)]
+impl Display for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}){}..{}", self.input, self.start, self.end)
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statment {
     Bind(Bind),
     TypeDecl(TypeDecl),
     TypeAssign(TypeAssign)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Identifier(Identifier), // e.g. foo
     Id(Identifier), // e.g.  Maybe
@@ -59,27 +67,27 @@ impl Expr {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct App {
-    pub expr: Box<Expr>,
+    pub ident: Identifier,
     pub args: Vec<Expr>,
     pub span: Span
 
 }
 
 impl App {
-    pub fn new(expr: Expr, args: Vec<Expr>, span: Span) -> Self {
+    pub fn new(ident: Identifier, args: Vec<Expr>, span: Span) -> Self {
         App {
-            expr: Box::new(expr),
+            ident,
             args,
             span
         }
     }
 }
 
-////////// Type Assignment 
+////////// Type Assignment
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeAssign {
     pub id: Identifier,
     pub ty: Type,
@@ -98,7 +106,7 @@ impl TypeAssign {
 
 ////////// Bind
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Bind {
     pub id: Identifier,
     pub args: Vec<Pattern>,
@@ -106,9 +114,21 @@ pub struct Bind {
     pub span: Span
 }
 
+impl Bind {
+    pub fn new(id: Identifier, args: Vec<Pattern>, expr: Expr, span: Span) -> Self {
+        Bind {
+            id,
+            args,
+            expr,
+            span
+        }
+    }
+}
+
+
 ////////// Identifier
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Identifier {
     pub name: String,
     pub span: Span
@@ -125,7 +145,7 @@ impl Identifier {
 
 ////////// Binary Operator
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum BinOp {
     Add,
     Sub,
@@ -146,7 +166,7 @@ pub enum BinOp {
 
 ////////// Type Declaration
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Variant {
     pub id: Identifier,
     pub types:  Vec<Type>
@@ -161,26 +181,28 @@ impl Variant {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeDecl { // type X a b = A a | B b
     pub name: Identifier, // X
     pub typevars: Vec<Identifier>, // [a, b]
-    pub variants: Vec<Variant> // [[A, [a]], [B, [b]]]
+    pub variants: Vec<Variant>, // [[A, [a]], [B, [b]]]
+    pub span: Span
 }
 
 impl TypeDecl {
-    pub fn new(name: Identifier, typevars: Vec<Identifier>, variants: Vec<Variant>) -> Self {
+    pub fn new(name: Identifier, typevars: Vec<Identifier>, variants: Vec<Variant>, span: Span) -> Self {
         TypeDecl {
             name,
             typevars,
-            variants
+            variants,
+            span
         }
     }
 }
 
 ////////// Type
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Generic(Identifier),
     Id(Identifier),
@@ -203,7 +225,7 @@ impl Type {
 
 ////////// Pattern
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Pattern {
     ListCons(Box<Pattern>, Box<Pattern>, Span),
     Wildcard(Span),
@@ -228,7 +250,7 @@ impl Pattern {
 
 ////////// Literal
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum LiteralKind {
     Integer(i64),
     Float(f64),
@@ -237,13 +259,22 @@ pub enum LiteralKind {
     Bool(Bool)
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Literal {
     pub lit: LiteralKind,
     pub span: Span
 }
 
-#[derive(Debug, PartialEq)]
+impl Literal {
+    pub fn new(lit: LiteralKind, span: Span) -> Self {
+        Literal {
+            lit,
+            span
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Bool {
     True,
     False
