@@ -169,14 +169,16 @@ pub enum BinOp {
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variant {
     pub id: Identifier,
-    pub types:  Vec<Type>
+    pub types:  Vec<Type>,
+    pub span: Span
 }
 
 impl Variant {
-    pub fn new(id: Identifier, types: Vec<Type>) -> Self {
+    pub fn new(id: Identifier, types: Vec<Type>, span: Span) -> Self {
         Variant {
             id,
-            types
+            types,
+            span
         }
     }
 }
