@@ -5,7 +5,6 @@ use crate::ast::Span;
 // #[logos(error = Error)]
 #[logos(skip r"/[*]([^*]|([*][^/]))*[*]/")] /* ... */
 #[logos(skip r"\/\/.*")] //
-#[logos(skip r"[ \t\n\f]+")]
 pub enum TokenKind<'a> {
     
     // Keywords
@@ -143,6 +142,15 @@ pub enum TokenKind<'a> {
     #[token("=")]
     Assign,
     
+    #[token(" ")]
+    Space,
+    
+    #[token("\t")]
+    Tab,
+    
+    #[token("\n")]
+    Newline,
+    
     Eof
 }
 
@@ -157,6 +165,13 @@ impl<'a> TokenKind<'a> {
     pub fn is_identifier(&self) -> bool {
         match self {
             TokenKind::Identifier(_) | TokenKind::PCIdentifier(_) => true,
+            _ => false
+        }
+    }
+    
+    pub fn is_whitespace(&self) -> bool {
+        match self {
+            TokenKind::Space | TokenKind::Tab | TokenKind::Newline => true,
             _ => false
         }
     }

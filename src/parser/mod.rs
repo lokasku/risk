@@ -25,6 +25,20 @@ impl<'a> Parser<'a> {
             current: 0
         }
     }
+    
+    fn start_recording(&mut self) -> usize {
+        self.current
+    }
+    
+    fn end_recording(&mut self, start: usize) -> ast::Span {
+        let mut end = self.current;
+        while self.tokens[end - 1].kind.is_whitespace() {
+            end -= 1;
+        }
+        let input = self.tokens[start..end].iter().fold("".to_string(), |acc, x| acc + &x.span.input);
+
+        ast::Span::new(start, end, input)
+    }
 
     fn advance(&mut self) -> Option<lexer::Token<'a>> {
         if self.is_eof() {
@@ -35,6 +49,10 @@ impl<'a> Parser<'a> {
             return None;
         }
         let token = self.tokens[self.current].clone();
+        
+        if token.kind.is_whitespace() {
+            return self.advance();
+        }
         self.current_span.end = token.span.end;
         self.current_span.input += &token.span.input;
         Some(token)
@@ -80,8 +98,9 @@ impl<'a> Parser<'a> {
         let peek = self.peek();
         match peek.kind {
             lexer::TokenKind::Identifier(id) => {
+                let index = self.start_recording();
                 self.advance();
-                let span = self.cut();
+                let span = self.end_recording(index);
                 Ok(ast::Identifier::new(id.to_string(), span))
             },
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
@@ -95,8 +114,9 @@ impl<'a> Parser<'a> {
         let peek = self.peek();
         match peek.kind {
             lexer::TokenKind::PCIdentifier(id) => {
+                let index = self.start_recording();
                 self.advance();
-                let span = self.cut();
+                let span = self.end_recording(index);
                 Ok(ast::Identifier::new(id.to_string(), span))
             },
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
@@ -107,16 +127,17 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_any_identifier(&mut self) -> ParserResult<ast::Identifier> {
+        let index = self.start_recording();
         let peek = self.peek();
         match peek.kind {
             lexer::TokenKind::Identifier(id) => {
                 self.advance();
-                let span = self.cut();
+                let span = self.end_recording(index);
                 Ok(ast::Identifier::new(id.to_string(), span))
             },
             lexer::TokenKind::PCIdentifier(id) => {
                 self.advance();
-                let span = self.cut();
+                let span = self.end_recording(index);
                 Ok(ast::Identifier::new(id.to_string(), span))
             },
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
@@ -156,17 +177,18 @@ impl<'a> Parser<'a> {
             _ => panic!("Unexpected token: {:?}", self.peek())
         }
     }
-    
+
     fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statment> {
+        let index = self.start_recording();
         let id = self.expect_identifier()?;
         if self.peek().kind == lexer::TokenKind::Assign {
             self.advance();
             let expr = self.parse_expr()?;
-            Ok(ast::Statment::Bind(ast::Bind::new(id, vec![], expr, self.cut())))
+            Ok(ast::Statment::Bind(ast::Bind::new(id, vec![], expr, self.end_recording(index))))
         } else if self.peek().kind == lexer::TokenKind::DoubleCollon {
             self.advance();
             let ty = self.parse_type()?;
-            Ok(ast::Statment::TypeAssign(ast::TypeAssign::new(id, ty, self.cut())))
+            Ok(ast::Statment::TypeAssign(ast::TypeAssign::new(id, ty, self.end_recording(index))))
         } else {
             Err(error::Error::new(error::ErrorKind::UnexpectedToken {
                 expected: "assignment or type annotation".to_string(),
@@ -175,6 +197,7 @@ impl<'a> Parser<'a> {
         }
     }
     fn parse_type_decl(&mut self) -> ParserResult<ast::Statment> {
+        let index = self.start_recording();
         self.advance();
         let id = self.expect_pc_identifier()?;
         let mut idents = Vec::new();
@@ -187,21 +210,23 @@ impl<'a> Parser<'a> {
             let variant = self.parse_variant()?;
             variants.push(variant);
         }
-        
-        Ok(ast::Statment::TypeDecl(TypeDecl::new(id, idents, variants, self.cut())))
+
+        Ok(ast::Statment::TypeDecl(TypeDecl::new(id, idents, variants, self.end_recording(index))))
     }
-    
+
     fn parse_variant(&mut self) -> ParserResult<ast::Variant> {
+        let index = self.start_recording();
         let id = self.expect_pc_identifier()?;
         let mut ty = Vec::new();
         while !self.match_token(lexer::TokenKind::Semicolon) {
             let t = self.parse_type()?;
             ty.push(t);
         }
-        Ok(ast::Variant::new(id, ty))
+        Ok(ast::Variant::new(id, ty, self.end_recording(index)))
     }
 
     fn parse_bind(&mut self) -> ParserResult<ast::Bind> {
+        let index = self.start_recording();
         let id = self.expect_identifier()?;
         let mut args = Vec::new();
         while !self.match_token(lexer::TokenKind::Assign) {
@@ -209,10 +234,11 @@ impl<'a> Parser<'a> {
             args.push(arg);
         }
         let expr = self.parse_expr()?;
-        Ok(ast::Bind::new(id, args, expr, self.cut()))
+        Ok(ast::Bind::new(id, args, expr, self.end_recording(index)))
     }
 
     fn parse_expr(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
         let mut lhs = self.parse_factor()?;
         while self.match_token(lexer::TokenKind::Add) || self.match_token(lexer::TokenKind::Sub) {
             let op = match self.past().kind {
@@ -221,13 +247,14 @@ impl<'a> Parser<'a> {
                 _ => unreachable!()
             };
             let rhs = self.parse_factor()?;
-            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.cut());
+            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
     }
 
     fn parse_factor(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
         let mut lhs = self.parse_cmp()?;
 
         while self.match_token(lexer::TokenKind::Mul) || self.match_token(lexer::TokenKind::Div) || self.match_token(lexer::TokenKind::Mod) {
@@ -238,7 +265,7 @@ impl<'a> Parser<'a> {
                 _ => unreachable!()
             };
             let rhs = self.parse_cmp()?;
-            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.cut());
+            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
@@ -246,6 +273,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_cmp(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
         let mut lhs = self.parse_exp()?;
 
         while self.match_token(lexer::TokenKind::Eq) || self.match_token(lexer::TokenKind::Neq) {
@@ -255,54 +283,57 @@ impl<'a> Parser<'a> {
                 _ => unreachable!()
             };
             let rhs = self.parse_exp()?;
-            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.cut());
+            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
     }
 
     fn parse_exp(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
         let mut lhs = self.parse_annotation()?;
 
         while self.match_token(lexer::TokenKind::Exp) {
             let rhs = self.parse_annotation()?;
-            lhs = ast::Expr::BinOp(ast::BinOp::Exp, Box::new(lhs), Box::new(rhs), self.cut());
+            lhs = ast::Expr::BinOp(ast::BinOp::Exp, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
     }
 
     fn parse_annotation(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
         let mut lhs = self.parse_primary()?;
         if self.match_token(lexer::TokenKind::DoubleCollon) {
             let ty = self.parse_type()?;
-            lhs = ast::Expr::Ann(Box::new(lhs), ty, self.cut());
+            lhs = ast::Expr::Ann(Box::new(lhs), ty, self.end_recording(index));
         }
 
         Ok(lhs)
     }
 
     fn parse_literal(&mut self) -> ParserResult<Literal> {
+        let index = self.start_recording();
         match self.peek().kind {
             lexer::TokenKind::Integer(i) => {
                 self.advance();
-                Ok(Literal::new(LiteralKind::Integer(i), self.cut()))
+                Ok(Literal::new(LiteralKind::Integer(i), self.end_recording(index)))
             },
             lexer::TokenKind::Float(f) => {
                 self.advance();
-                Ok(Literal::new(LiteralKind::Float(f), self.cut()))
+                Ok(Literal::new(LiteralKind::Float(f), self.end_recording(index)))
             },
             lexer::TokenKind::String(s) => {
                 self.advance();
-                Ok(Literal::new(LiteralKind::String(s.to_string()), self.cut()))
+                Ok(Literal::new(LiteralKind::String(s.to_string()), self.end_recording(index)))
             },
             lexer::TokenKind::True => {
                 self.advance();
-                Ok(Literal::new(LiteralKind::Bool(Bool::True), self.cut()))
+                Ok(Literal::new(LiteralKind::Bool(Bool::True), self.end_recording(index)))
             },
             lexer::TokenKind::False => {
                 self.advance();
-                Ok(Literal::new(LiteralKind::Bool(Bool::False), self.cut()))
+                Ok(Literal::new(LiteralKind::Bool(Bool::False), self.end_recording(index)))
             },
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
                 expected: "literal".to_string(),
@@ -314,18 +345,19 @@ impl<'a> Parser<'a> {
 
 
     fn parse_primary(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
         match self.peek().kind {
             lexer::TokenKind::Integer(i) => {
                 self.advance();
-                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Integer(i), self.cut())))
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Integer(i), self.end_recording(index))))
             },
             lexer::TokenKind::Float(f) => {
                 self.advance();
-                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Float(f), self.cut())))
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Float(f), self.end_recording(index))))
             },
             lexer::TokenKind::String(s) => {
                 self.advance();
-                Ok(ast::Expr::Literal(Literal::new(LiteralKind::String(s.to_string()), self.cut())))
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::String(s.to_string()), self.end_recording(index))))
             },
             n @ (lexer::TokenKind::Identifier(_) | lexer::TokenKind::PCIdentifier(_)) => {
                 let id = self.expect_any_identifier()?;
@@ -340,7 +372,7 @@ impl<'a> Parser<'a> {
 
                     }
 
-                    return Ok(ast::Expr::App(App::new(id, exprs, self.cut())));
+                    return Ok(ast::Expr::App(App::new(id, exprs, self.end_recording(index))));
                 } else {
                     *self = cloned;
                 }
@@ -368,7 +400,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let expr = self.parse_expr()?;
-                Ok(ast::Expr::Let(binds, Box::new(expr), self.cut()))
+                Ok(ast::Expr::Let(binds, Box::new(expr), self.end_recording(index)))
             },
             lexer::TokenKind::If => {
                 self.advance();
@@ -377,7 +409,7 @@ impl<'a> Parser<'a> {
                 let then = self.parse_expr()?;
                 self.expect(token![else])?;
                 let else_ = self.parse_expr()?;
-                Ok(ast::Expr::Condition(Box::new(cond), Box::new(then), Box::new(else_), self.cut()))
+                Ok(ast::Expr::Condition(Box::new(cond), Box::new(then), Box::new(else_), self.end_recording(index)))
             },
             lexer::TokenKind::Match => {
                 self.advance();
@@ -390,7 +422,7 @@ impl<'a> Parser<'a> {
                     let expr = Box::new(self.parse_expr()?);
                     arms.push((pat, expr));
                 }
-                Ok(ast::Expr::Match(Box::new(expr), arms, self.cut()))
+                Ok(ast::Expr::Match(Box::new(expr), arms, self.end_recording(index)))
             },
 
             lexer::TokenKind::DoubleSlash => {
@@ -403,7 +435,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let expr = self.parse_expr()?;
-                Ok(ast::Expr::Lambda(pats, Box::new(expr), self.cut()))
+                Ok(ast::Expr::Lambda(pats, Box::new(expr), self.end_recording(index)))
             },
 
 
@@ -415,16 +447,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pattern(&mut self) -> ParserResult<ast::Pattern> {
+        let index = self.start_recording();
         let pat = self.parse_pattern_primary()?;
         if self.match_token(lexer::TokenKind::Colon) {
             let pat2 = self.parse_pattern()?;
-            Ok(ast::Pattern::ListCons(Box::new(pat), Box::new(pat2), self.cut()))
+            Ok(ast::Pattern::ListCons(Box::new(pat), Box::new(pat2), self.end_recording(index)))
         } else {
             Ok(pat)
         }
     }
 
     fn parse_pattern_primary(&mut self) -> ParserResult<ast::Pattern> {
+        let index = self.start_recording();
         match self.peek().kind {
             n if n.is_literal() => {
                 let lit = self.parse_literal()?;
@@ -441,7 +475,7 @@ impl<'a> Parser<'a> {
                         ty = self.parse_type();
                     }
 
-                    return Ok(ast::Pattern::App(id, types, self.cut()));
+                    return Ok(ast::Pattern::App(id, types, self.end_recording(index)));
                 } else {
                     *self = cloned;
                 }
@@ -456,9 +490,9 @@ impl<'a> Parser<'a> {
 
             lexer::TokenKind::Underscore => {
                 self.advance();
-                Ok(ast::Pattern::Wildcard(self.cut()))
+                Ok(ast::Pattern::Wildcard(self.end_recording(index)))
             },
-            
+
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
                 expected: "pattern".to_string(),
                 found: self.peek().span.clone()
@@ -469,17 +503,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type(&mut self) -> ParserResult<ast::Type> {
+        let index = self.start_recording();
         let mut lhs = self.parse_type_primary()?;
         let mut rhs = Vec::new();
         while self.match_token(lexer::TokenKind::Arrow) {
             rhs.push(self.parse_type_primary()?);
-            lhs = ast::Type::Func(Box::new(lhs), rhs.clone(), self.cut());
+            lhs = ast::Type::Func(Box::new(lhs), rhs.clone(), self.end_recording(index));
         }
-        
+
         Ok(lhs)
     }
-    
+
     fn parse_type_primary(&mut self) -> ParserResult<ast::Type> {
+        let index = self.start_recording();
         match self.peek().kind {
             n if n.is_identifier() => {
                 let id = self.expect_any_identifier()?;
@@ -492,7 +528,7 @@ impl<'a> Parser<'a> {
                         ty = self.parse_type();
                     }
 
-                    return Ok(ast::Type::App(id, types, self.cut()));
+                    return Ok(ast::Type::App(id, types, self.end_recording(index)));
                 } else {
                     *self = cloned;
                 }
@@ -503,14 +539,14 @@ impl<'a> Parser<'a> {
                     _ => unreachable!()
                 }
             },
-            
+
             lexer::TokenKind::LBracket => {
                 self.advance();
                 let ty = self.parse_type()?;
                 self.expect(token![rbracket])?;
                 Ok(ty)
             },
-            
+
             lexer::TokenKind::LParen => {
                 self.advance();
                 let mut tys = Vec::new();
@@ -519,10 +555,10 @@ impl<'a> Parser<'a> {
                     tys.push(ty);
                     self.expect(token![,])?;
                 }
-                
-                Ok(ast::Type::Tuple(tys, self.cut()))
+
+                Ok(ast::Type::Tuple(tys, self.end_recording(index)))
             },
-            
+
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
                 expected: "type".to_string(),
                 found: self.peek().span.clone()
