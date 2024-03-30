@@ -5,6 +5,7 @@ use logos::Logos;
 use parser::lexer::*;
 
 mod parser;
+mod ast;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -14,7 +15,9 @@ fn main() {
 
     let content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
 
-    let mut lexer = TType::lexer(&content);
-
-    println!("{:?}", lexer.next());
+    let mut parser = parser::Parser::new(&content);
+    
+    let ast = parser.parse();
+    
+    println!("{:#?}", ast);
 }
