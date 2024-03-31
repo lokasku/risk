@@ -301,10 +301,19 @@ impl<'a> Parser<'a> {
         let index = self.start_recording();
         let mut lhs = self.parse_exp()?;
 
-        while self.match_token(lexer::TokenKind::Eq) || self.match_token(lexer::TokenKind::Neq) {
+        while self.match_token(lexer::TokenKind::Eq) 
+            || self.match_token(lexer::TokenKind::Neq)
+            || self.match_token(lexer::TokenKind::Lt) 
+            || self.match_token(lexer::TokenKind::Gt)
+            || self.match_token(lexer::TokenKind::Lte)
+            || self.match_token(lexer::TokenKind::Gte) {
             let op = match self.past().kind {
                 lexer::TokenKind::Eq => ast::BinOp::Eq,
                 lexer::TokenKind::Neq => ast::BinOp::Ineq,
+                lexer::TokenKind::Lt => ast::BinOp::LessThan,
+                lexer::TokenKind::Gt => ast::BinOp::GreaterThan,
+                lexer::TokenKind::Lte => ast::BinOp::LessThanOrEq,
+                lexer::TokenKind::Gte => ast::BinOp::GreaterThanOrEq,
                 _ => unreachable!()
             };
             let rhs = self.parse_exp()?;
