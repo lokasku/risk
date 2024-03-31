@@ -1,5 +1,5 @@
 use crate::{ast, token};
-use crate::ast::{App, Bool, Literal, LiteralKind, TypeDecl};
+use crate::ast::{App, BinOp, Bool, Literal, LiteralKind, TypeDecl};
 use crate::parser::lexer::{Lexer, lexer, Token};
 
 pub mod lexer;
@@ -280,7 +280,7 @@ impl<'a> Parser<'a> {
 
     fn parse_factor(&mut self) -> ParserResult<ast::Expr> {
         let index = self.start_recording();
-        let mut lhs = self.parse_cmp()?;
+        let mut lhs = self.parse_or_and()?;
 
         while self.match_token(lexer::TokenKind::Mul) || self.match_token(lexer::TokenKind::Div) || self.match_token(lexer::TokenKind::Mod) {
             let op = match self.past().kind {
@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
                 lexer::TokenKind::Mod => ast::BinOp::Mod,
                 _ => unreachable!()
             };
-            let rhs = self.parse_cmp()?;
+            let rhs = self.parse_or_and()?;
             lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
@@ -297,14 +297,40 @@ impl<'a> Parser<'a> {
 
     }
 
+    fn parse_or_and(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
+        let mut lhs = self.parse_cmp()?;
+
+        while self.match_token(lexer::TokenKind::Or) || self.match_token(lexer::TokenKind::And) {
+            let op = match self.past().kind {
+                lexer::TokenKind::Or => ast::BinOp::Or,
+                lexer::TokenKind::And => ast::BinOp::And,
+                _ => unreachable!()
+            };
+            let rhs = self.parse_cmp()?;
+            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
+        }
+
+        Ok(lhs)
+    }
+
     fn parse_cmp(&mut self) -> ParserResult<ast::Expr> {
         let index = self.start_recording();
         let mut lhs = self.parse_exp()?;
 
-        while self.match_token(lexer::TokenKind::Eq) || self.match_token(lexer::TokenKind::Neq) {
+        while self.match_token(lexer::TokenKind::Eq) 
+            || self.match_token(lexer::TokenKind::Neq)
+            || self.match_token(lexer::TokenKind::Lt) 
+            || self.match_token(lexer::TokenKind::Gt)
+            || self.match_token(lexer::TokenKind::Lte)
+            || self.match_token(lexer::TokenKind::Gte) {
             let op = match self.past().kind {
                 lexer::TokenKind::Eq => ast::BinOp::Eq,
                 lexer::TokenKind::Neq => ast::BinOp::Ineq,
+                lexer::TokenKind::Lt => ast::BinOp::LessThan,
+                lexer::TokenKind::Gt => ast::BinOp::GreaterThan,
+                lexer::TokenKind::Lte => ast::BinOp::LessThanOrEq,
+                lexer::TokenKind::Gte => ast::BinOp::GreaterThanOrEq,
                 _ => unreachable!()
             };
             let rhs = self.parse_exp()?;
@@ -313,14 +339,26 @@ impl<'a> Parser<'a> {
 
         Ok(lhs)
     }
+    
 
     fn parse_exp(&mut self) -> ParserResult<ast::Expr> {
         let index = self.start_recording();
-        let mut lhs = self.parse_annotation()?;
+        let mut lhs = self.parse_list_cons()?;
 
         while self.match_token(lexer::TokenKind::Exp) {
+            let rhs = self.parse_list_cons()?;
+            lhs = ast::Expr::BinOp(BinOp::Exp, Box::new(lhs), Box::new(rhs), self.end_recording(index));
+        }
+
+        Ok(lhs)
+    }
+    
+    fn parse_list_cons(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
+        let mut lhs = self.parse_annotation()?;
+        while self.match_token(lexer::TokenKind::DoubleCollon) {
             let rhs = self.parse_annotation()?;
-            lhs = ast::Expr::BinOp(ast::BinOp::Exp, Box::new(lhs), Box::new(rhs), self.end_recording(index));
+            lhs = ast::Expr::BinOp(BinOp::ListCons, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
@@ -384,6 +422,16 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(ast::Expr::Literal(Literal::new(LiteralKind::String(s.to_string()), self.end_recording(index))))
             },
+            lexer::TokenKind::True => {
+                self.advance();
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Bool(Bool::True), self.end_recording(index)))
+                )
+            },
+            lexer::TokenKind::False => {
+                self.advance();
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Bool(Bool::False), self.end_recording(index)))
+                )
+            },
             n @ (lexer::TokenKind::Identifier(_) | lexer::TokenKind::PCIdentifier(_)) => {
                 let id = self.expect_any_identifier()?;
                 let cloned = self.clone();
@@ -439,7 +487,7 @@ impl<'a> Parser<'a> {
             lexer::TokenKind::Match => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(token![in])?;
+                self.expect(token![with])?;
                 let mut arms = Vec::new();
                 while self.match_token(lexer::TokenKind::Pipe) {
                     let pat = Box::new(self.parse_pattern()?);
@@ -450,7 +498,7 @@ impl<'a> Parser<'a> {
                 Ok(ast::Expr::Match(Box::new(expr), arms, self.end_recording(index)))
             },
 
-            lexer::TokenKind::DoubleSlash => {
+            lexer::TokenKind::InversedSlash => {
                 self.advance();
                 let mut pats = Vec::new();
 
@@ -461,6 +509,17 @@ impl<'a> Parser<'a> {
 
                 let expr = self.parse_expr()?;
                 Ok(ast::Expr::Lambda(pats, Box::new(expr), self.end_recording(index)))
+            },
+            
+            lexer::TokenKind::LBracket => {
+                self.advance();
+                let mut exprs = Vec::new();
+                while !self.match_token(lexer::TokenKind::RBracket) {
+                    let expr = self.parse_expr()?;
+                    exprs.push(expr);
+                    self.expect(token![,])?;
+                }
+                Ok(ast::Expr::List(exprs, self.end_recording(index)))
             },
 
 
