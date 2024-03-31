@@ -384,6 +384,16 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(ast::Expr::Literal(Literal::new(LiteralKind::String(s.to_string()), self.end_recording(index))))
             },
+            lexer::TokenKind::True => {
+                self.advance();
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Bool(Bool::True), self.end_recording(index)))
+                )
+            },
+            lexer::TokenKind::False => {
+                self.advance();
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Bool(Bool::False), self.end_recording(index)))
+                )
+            },
             n @ (lexer::TokenKind::Identifier(_) | lexer::TokenKind::PCIdentifier(_)) => {
                 let id = self.expect_any_identifier()?;
                 let cloned = self.clone();

@@ -158,6 +158,7 @@ impl<'a> TokenKind<'a> {
     pub fn is_literal(&self) -> bool {
         match self {
             TokenKind::Integer(_) | TokenKind::Float(_) | TokenKind::String(_) | TokenKind::Char(_) => true,
+            TokenKind::True | TokenKind::False => true,
             _ => false
         }
     }
