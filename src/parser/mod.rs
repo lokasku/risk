@@ -1,6 +1,6 @@
 use crate::{ast, token};
 use crate::ast::{App, Bool, Literal, LiteralKind, TypeDecl};
-use crate::parser::lexer::{Lexer, lexer};
+use crate::parser::lexer::{Lexer, lexer, Token};
 
 pub mod lexer;
 mod error;
@@ -25,11 +25,11 @@ impl<'a> Parser<'a> {
             current: 0
         }
     }
-    
+
     fn start_recording(&mut self) -> usize {
         self.current
     }
-    
+
     fn end_recording(&mut self, start: usize) -> ast::Span {
         let mut end = self.current;
         while self.tokens[end - 1].kind.is_whitespace() {
@@ -49,16 +49,14 @@ impl<'a> Parser<'a> {
             return None;
         }
         let token = self.tokens[self.current].clone();
-        
+
         if token.kind.is_whitespace() {
             return self.advance();
         }
-        self.current_span.end = token.span.end;
-        self.current_span.input += &token.span.input;
         Some(token)
     }
 
-    fn expect(&mut self, token: lexer::Token<'a>) -> ParserResult<Option<lexer::Token<'a>>> {
+    fn expect(&mut self, token: Token<'a>) -> ParserResult<Option<Token<'a>>> {
         let tok = self.advance();
         if self.peek().kind == token.kind {
             Ok(tok)
@@ -66,8 +64,21 @@ impl<'a> Parser<'a> {
             Err(
                 error::Error::new(error::ErrorKind::UnexpectedToken {
                     expected: format!("{:?}", token.kind),
-                    found: self.current_span.clone()
-                }, self.current_span.clone())
+                    found: self.peek().span
+                }, self.peek().span)
+            )
+        }
+    }
+    
+    fn expect_current(&mut self, token: Token<'a>) -> ParserResult<Option<Token<'a>>> {
+        if self.peek().kind == token.kind {
+            Ok(self.advance())
+        } else {
+            Err(
+                error::Error::new(error::ErrorKind::UnexpectedToken {
+                    expected: format!("{:?}", token.kind),
+                    found: self.peek().span
+                }, self.peek().span)
             )
         }
     }
@@ -91,12 +102,7 @@ impl<'a> Parser<'a> {
         }
         self.tokens[self.current - n].clone()
     }
-
-    fn cut(&mut self) -> ast::Span {
-        let span = self.current_span.clone();
-        self.current_span = ast::Span::new(self.current_span.end, self.current_span.end, "".to_string());
-        span
-    }
+    
 
     fn expect_identifier(&mut self) -> ParserResult<ast::Identifier> {
         let peek = self.peek();
@@ -161,6 +167,19 @@ impl<'a> Parser<'a> {
             _ => false
         }
     }
+    
+    fn back_up(&mut self) -> Option<Token>{
+        self.current -= 1;
+        if self.is_eof() {
+            return None;
+        }
+        let token = self.tokens[self.current].clone();
+
+        if token.kind.is_whitespace() {
+            return self.back_up();
+        }
+        Some(token)
+    }
 
     fn is_eof(&self) -> bool {
         self.current >= self.tokens.len()
@@ -185,19 +204,13 @@ impl<'a> Parser<'a> {
     fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statment> {
         let index = self.start_recording();
         let id = self.expect_identifier()?;
-        if self.peek().kind == lexer::TokenKind::Assign {
-            self.advance();
-            let expr = self.parse_expr()?;
-            Ok(ast::Statment::Bind(ast::Bind::new(id, vec![], expr, self.end_recording(index))))
-        } else if self.peek().kind == lexer::TokenKind::DoubleCollon {
+       if self.peek().kind == lexer::TokenKind::DoubleCollon {
             self.advance();
             let ty = self.parse_type()?;
             Ok(ast::Statment::TypeAssign(ast::TypeAssign::new(id, ty, self.end_recording(index))))
         } else {
-            Err(error::Error::new(error::ErrorKind::UnexpectedToken {
-                expected: "assignment or type annotation".to_string(),
-                found: self.peek().span.clone()
-            }, self.peek().span.clone()))
+           self.back_up();
+           Ok(ast::Statment::Bind(self.parse_bind()?))
         }
     }
     fn parse_type_decl(&mut self) -> ParserResult<ast::Statment> {
@@ -209,7 +222,10 @@ impl<'a> Parser<'a> {
             let id = self.expect_identifier()?;
             idents.push(id);
         }
+
         let mut variants = Vec::new();
+        let variant = self.parse_variant()?;
+        variants.push(variant);
         while self.match_token(lexer::TokenKind::Pipe) {
             let variant = self.parse_variant()?;
             variants.push(variant);
@@ -222,9 +238,14 @@ impl<'a> Parser<'a> {
         let index = self.start_recording();
         let id = self.expect_pc_identifier()?;
         let mut ty = Vec::new();
-        while !self.match_token(lexer::TokenKind::Semicolon) {
-            let t = self.parse_type()?;
-            ty.push(t);
+        let mut current_ty;
+        loop {
+            current_ty = self.parse_type();
+            if current_ty.is_ok() {
+                ty.push(current_ty.unwrap());
+            } else {
+                break;
+            }
         }
         Ok(ast::Variant::new(id, ty, self.end_recording(index)))
     }
@@ -391,7 +412,7 @@ impl<'a> Parser<'a> {
             lexer::TokenKind::LParen => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(token![rparen])?;
+                self.expect_current(token![rparen])?;
                 Ok(expr)
             },
             lexer::TokenKind::Let => {
@@ -407,11 +428,11 @@ impl<'a> Parser<'a> {
                 Ok(ast::Expr::Let(binds, Box::new(expr), self.end_recording(index)))
             },
             lexer::TokenKind::If => {
-                self.advance();
+                self.advance().unwrap();
                 let cond = self.parse_expr()?;
-                self.expect(token![then])?;
+                self.expect_current(token![then])?;
                 let then = self.parse_expr()?;
-                self.expect(token![else])?;
+                self.expect_current(token![else])?;
                 let else_ = self.parse_expr()?;
                 Ok(ast::Expr::Condition(Box::new(cond), Box::new(then), Box::new(else_), self.end_recording(index)))
             },
