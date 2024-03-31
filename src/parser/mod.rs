@@ -280,7 +280,7 @@ impl<'a> Parser<'a> {
 
     fn parse_factor(&mut self) -> ParserResult<ast::Expr> {
         let index = self.start_recording();
-        let mut lhs = self.parse_cmp()?;
+        let mut lhs = self.parse_or_and()?;
 
         while self.match_token(lexer::TokenKind::Mul) || self.match_token(lexer::TokenKind::Div) || self.match_token(lexer::TokenKind::Mod) {
             let op = match self.past().kind {
@@ -289,12 +289,29 @@ impl<'a> Parser<'a> {
                 lexer::TokenKind::Mod => ast::BinOp::Mod,
                 _ => unreachable!()
             };
-            let rhs = self.parse_cmp()?;
+            let rhs = self.parse_or_and()?;
             lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
 
+    }
+
+    fn parse_or_and(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
+        let mut lhs = self.parse_cmp()?;
+
+        while self.match_token(lexer::TokenKind::Or) || self.match_token(lexer::TokenKind::And) {
+            let op = match self.past().kind {
+                lexer::TokenKind::Or => ast::BinOp::Or,
+                lexer::TokenKind::And => ast::BinOp::And,
+                _ => unreachable!()
+            };
+            let rhs = self.parse_cmp()?;
+            lhs = ast::Expr::BinOp(op, Box::new(lhs), Box::new(rhs), self.end_recording(index));
+        }
+
+        Ok(lhs)
     }
 
     fn parse_cmp(&mut self) -> ParserResult<ast::Expr> {
@@ -322,6 +339,7 @@ impl<'a> Parser<'a> {
 
         Ok(lhs)
     }
+    
 
     fn parse_exp(&mut self) -> ParserResult<ast::Expr> {
         let index = self.start_recording();
