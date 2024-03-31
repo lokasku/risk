@@ -1,5 +1,5 @@
 use crate::{ast, token};
-use crate::ast::{App, Bool, Literal, LiteralKind, TypeDecl};
+use crate::ast::{App, BinOp, Bool, Literal, LiteralKind, TypeDecl};
 use crate::parser::lexer::{Lexer, lexer, Token};
 
 pub mod lexer;
@@ -343,11 +343,22 @@ impl<'a> Parser<'a> {
 
     fn parse_exp(&mut self) -> ParserResult<ast::Expr> {
         let index = self.start_recording();
-        let mut lhs = self.parse_annotation()?;
+        let mut lhs = self.parse_list_cons()?;
 
         while self.match_token(lexer::TokenKind::Exp) {
+            let rhs = self.parse_list_cons()?;
+            lhs = ast::Expr::BinOp(BinOp::Exp, Box::new(lhs), Box::new(rhs), self.end_recording(index));
+        }
+
+        Ok(lhs)
+    }
+    
+    fn parse_list_cons(&mut self) -> ParserResult<ast::Expr> {
+        let index = self.start_recording();
+        let mut lhs = self.parse_annotation()?;
+        while self.match_token(lexer::TokenKind::DoubleCollon) {
             let rhs = self.parse_annotation()?;
-            lhs = ast::Expr::BinOp(ast::BinOp::Exp, Box::new(lhs), Box::new(rhs), self.end_recording(index));
+            lhs = ast::Expr::BinOp(BinOp::ListCons, Box::new(lhs), Box::new(rhs), self.end_recording(index));
         }
 
         Ok(lhs)
@@ -498,6 +509,17 @@ impl<'a> Parser<'a> {
 
                 let expr = self.parse_expr()?;
                 Ok(ast::Expr::Lambda(pats, Box::new(expr), self.end_recording(index)))
+            },
+            
+            lexer::TokenKind::LBracket => {
+                self.advance();
+                let mut exprs = Vec::new();
+                while !self.match_token(lexer::TokenKind::RBracket) {
+                    let expr = self.parse_expr()?;
+                    exprs.push(expr);
+                    self.expect(token![,])?;
+                }
+                Ok(ast::Expr::List(exprs, self.end_recording(index)))
             },
 
 
