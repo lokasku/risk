@@ -67,8 +67,8 @@ pub enum TokenKind<'a> {
     #[token("_")]
     Underscore,
     
-    #[token("\\\\")]
-    DoubleSlash,
+    #[token("\\")]
+    InversedSlash,
 
     #[token("(")]
     LParen,
@@ -298,8 +298,8 @@ macro_rules! token {
     (rbracket) => {
         $crate::parser::lexer::Token::new($crate::parser::lexer::TokenKind::RBracket, $crate::ast::Span::new(0, 0, "".to_string()))
     };
-    (double_slash) => {
-        $crate::parser::lexer::Token::new($crate::parser::lexer::TokenKind::DoubleSlash, $crate::ast::Span::new(0, 0, "".to_string()))
+    (inversed_slash) => {
+        $crate::parser::lexer::Token::new($crate::parser::lexer::TokenKind::InversedSlash, $crate::ast::Span::new(0, 0, "".to_string()))
     };
     (_) => {
         $crate::parser::lexer::Token::new($crate::parser::lexer::TokenKind::Underscore, $crate::ast::Span::new(0, 0, "".to_string()))

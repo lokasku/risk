@@ -449,7 +449,7 @@ impl<'a> Parser<'a> {
             lexer::TokenKind::Match => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(token![in])?;
+                self.expect(token![with])?;
                 let mut arms = Vec::new();
                 while self.match_token(lexer::TokenKind::Pipe) {
                     let pat = Box::new(self.parse_pattern()?);
@@ -460,7 +460,7 @@ impl<'a> Parser<'a> {
                 Ok(ast::Expr::Match(Box::new(expr), arms, self.end_recording(index)))
             },
 
-            lexer::TokenKind::DoubleSlash => {
+            lexer::TokenKind::InversedSlash => {
                 self.advance();
                 let mut pats = Vec::new();
 
