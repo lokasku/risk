@@ -502,7 +502,6 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_expr()?;
                 self.expect_current(token![with])?;
                 let mut arms = Vec::new();
-                self.expect_new_line()?;
                 while self.match_token(lexer::TokenKind::Pipe) {
                     let pat = Box::new(self.parse_pattern()?);
                     self.expect_current(token![->])?;
