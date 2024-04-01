@@ -207,14 +207,22 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_statement(&mut self) -> ParserResult<ast::Statment> {
-        match self.peek().kind {
+        let res = match self.peek().kind {
             lexer::TokenKind::Identifier(_) => self.parse_stmt_identifier(),
             lexer::TokenKind::Type => self.parse_type_decl(),
             _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
                 expected: "statement".to_string(),
                 found: self.peek().span.clone()
             }, self.peek().span.clone()))
+        }?;
+        if self.peek().kind != lexer::TokenKind::Eof {
+            if self.peek().kind != lexer::TokenKind::Newline {
+                return Err(error::Error::new(error::ErrorKind::TooMuchExpr {
+                    found: self.peek().span.clone()
+                }, self.peek().span.clone()));
+            }
         }
+        Ok(res)
     }
 
     fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statment> {
@@ -484,7 +492,7 @@ impl<'a> Parser<'a> {
                 let mut binds = Vec::new();
                 while !self.match_token(lexer::TokenKind::In) {
                     let bind = self.parse_bind()?;
-                    self.expect(token![;])?;
+                    self.expect_current(token![;])?;
                     binds.push(bind);
                 }
 
@@ -612,7 +620,7 @@ impl<'a> Parser<'a> {
         let mut lhs = self.parse_type_primary()?;
         let mut rhs = Vec::new();
         while self.match_token(lexer::TokenKind::Arrow) {
-            rhs.push(self.parse_type_primary()?);
+            rhs.push(self.parse_type()?);
             lhs = ast::Type::Func(Box::new(lhs), rhs.clone(), self.end_recording(index));
         }
 
@@ -624,15 +632,16 @@ impl<'a> Parser<'a> {
         match self.peek().kind {
             n if n.is_identifier() => {
                 let id = self.expect_any_identifier()?;
-                let cloned = self.clone();
+                let mut cloned = self.clone();
                 let mut ty = self.parse_type();
                 if ty.is_ok() {
                     let mut types = vec![];
                     while ty.is_ok() {
                         types.push(ty.unwrap());
                         ty = self.parse_type();
+                        cloned = self.clone();
                     }
-
+                    *self = cloned;
                     return Ok(ast::Type::App(id, types, self.end_recording(index)));
                 } else {
                     *self = cloned;
@@ -648,19 +657,22 @@ impl<'a> Parser<'a> {
             lexer::TokenKind::LBracket => {
                 self.advance();
                 let ty = self.parse_type()?;
-                self.expect(token![rbracket])?;
+                self.expect_current(token![rbracket])?;
+                
                 Ok(ty)
             },
 
             lexer::TokenKind::LParen => {
                 self.advance();
                 let mut tys = Vec::new();
+                let ty = self.parse_type()?;
+                tys.push(ty);
                 while !self.match_token(lexer::TokenKind::RParen) {
+                    self.expect_current(token![,])?;
                     let ty = self.parse_type()?;
                     tys.push(ty);
-                    self.expect(token![,])?;
                 }
-
+                
                 Ok(ast::Type::Tuple(tys, self.end_recording(index)))
             },
 
