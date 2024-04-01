@@ -1,3 +1,21 @@
+/*
+    Risk is a purely functional, strongly typed language.
+    Copyright (C) 2024, Lokasku & NightProg
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 use crate::{ast, token};
 use crate::ast::{App, BinOp, Bool, Literal, LiteralKind, TypeDecl};
 use crate::parser::lexer::{Lexer, lexer, Token};
@@ -455,6 +473,10 @@ impl<'a> Parser<'a> {
                 self.advance();
                 Ok(ast::Expr::Literal(Literal::new(LiteralKind::Bool(Bool::False), self.end_recording(index)))
                 )
+            },
+            lexer::TokenKind::Char(c) => {
+                self.advance();
+                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Char(c), self.end_recording(index)))
             },
             n @ (lexer::TokenKind::Identifier(_) | lexer::TokenKind::PCIdentifier(_)) => {
                 let id = self.expect_any_identifier()?;
