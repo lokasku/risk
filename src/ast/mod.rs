@@ -15,6 +15,16 @@ impl Span {
             input
         }
     }
+    
+    pub fn get_line_number(&self, source: &str) -> usize {
+        let mut line = 1;
+        for c in source.chars().skip(self.start).take(self.end - self.start) {
+            if c == '\n' {
+                line += 1;
+            }
+        }
+        line
+    }
 }
 
 impl Display for Span {

@@ -19,5 +19,9 @@ fn main() {
     
     let ast = parser.parse();
     
-    println!("{:#?}", ast);
+    if let Err(e) = ast {
+        e.report(&args[1]);
+    } else {
+        println!("{:?}", ast.unwrap());
+    }
 }
