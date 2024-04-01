@@ -487,11 +487,11 @@ impl<'a> Parser<'a> {
             lexer::TokenKind::Match => {
                 self.advance();
                 let expr = self.parse_expr()?;
-                self.expect(token![with])?;
+                self.expect_current(token![with])?;
                 let mut arms = Vec::new();
                 while self.match_token(lexer::TokenKind::Pipe) {
                     let pat = Box::new(self.parse_pattern()?);
-                    self.expect(token![->])?;
+                    self.expect_current(token![->])?;
                     let expr = Box::new(self.parse_expr()?);
                     arms.push((pat, expr));
                 }
