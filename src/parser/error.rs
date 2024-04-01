@@ -7,6 +7,7 @@ pub enum ErrorKind {
     UnexpectedEOF { expected: String },
     UnexpectedEndOfInput,
     UnexpectedTokenInPattern { found: Span },
+    TooMuchExpr { found: Span }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -64,6 +65,17 @@ impl Error {
                             (filename, found.start..found.end)
                         )
                         .with_message("Unexpected token in pattern")
+                    )
+                ;
+            },
+            ErrorKind::TooMuchExpr { found } => {
+                report = report.with_code("too-much-expr")
+                    .with_message(format!("Too much expr found at line {}",
+                                          found.get_line_number(source)))
+                    .with_label(Label::new(
+                            (filename, found.start..found.end)
+                        )
+                        .with_message("Too much expr")
                     )
                 ;
             }
