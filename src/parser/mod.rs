@@ -214,7 +214,7 @@ impl<'a> Parser<'a> {
                 expected: "statement".to_string(),
                 found: self.peek().span.clone()
             }, self.peek().span.clone()))
-        };
+        }?;
         if self.peek().kind != lexer::TokenKind::Eof {
             if self.peek().kind != lexer::TokenKind::Newline {
                 return Err(error::Error::new(error::ErrorKind::TooMuchExpr {
@@ -222,7 +222,7 @@ impl<'a> Parser<'a> {
                 }, self.peek().span.clone()));
             }
         }
-        res
+        Ok(res)
     }
 
     fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statment> {
@@ -658,16 +658,19 @@ impl<'a> Parser<'a> {
                 self.advance();
                 let ty = self.parse_type()?;
                 self.expect_current(token![rbracket])?;
+                
                 Ok(ty)
             },
 
             lexer::TokenKind::LParen => {
                 self.advance();
                 let mut tys = Vec::new();
+                let ty = self.parse_type()?;
+                tys.push(ty);
                 while !self.match_token(lexer::TokenKind::RParen) {
+                    self.expect_current(token![,])?;
                     let ty = self.parse_type()?;
                     tys.push(ty);
-                    self.expect_current(token![,])?;
                 }
                 
                 Ok(ast::Type::Tuple(tys, self.end_recording(index)))
