@@ -210,7 +210,10 @@ impl<'a> Parser<'a> {
         match self.peek().kind {
             lexer::TokenKind::Identifier(_) => self.parse_stmt_identifier(),
             lexer::TokenKind::Type => self.parse_type_decl(),
-            _ => panic!("Unexpected token: {:?}", self.peek())
+            _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
+                expected: "statement".to_string(),
+                found: self.peek().span.clone()
+            }, self.peek().span.clone()))
         }
     }
 
@@ -502,6 +505,11 @@ impl<'a> Parser<'a> {
                 let expr = self.parse_expr()?;
                 self.expect_current(token![with])?;
                 let mut arms = Vec::new();
+                self.expect_current(token![|])?;
+                let arm_pat = Box::new(self.parse_pattern()?);
+                self.expect_current(token![->])?;
+                let arm_expr = Box::new(self.parse_expr()?);
+                arms.push((arm_pat, arm_expr));
                 while self.match_token(lexer::TokenKind::Pipe) {
                     let pat = Box::new(self.parse_pattern()?);
                     self.expect_current(token![->])?;
