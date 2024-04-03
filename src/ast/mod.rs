@@ -1,21 +1,36 @@
-use std::fmt::Display;
+/*
+    Risk is a purely functional, strongly typed language.
+    Copyright (C) 2024, Lokasku & NightProg
 
-#[derive(Debug, PartialEq, Clone)]
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+use std::fmt::Display;
+use std::hash::{Hash, Hasher};
+
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
-    pub input: String
+    pub input: String,
 }
 
 impl Span {
     pub fn new(start: usize, end: usize, input: String) -> Self {
-        Span {
-            start,
-            end,
-            input
-        }
+        Span { start, end, input }
     }
-    
+
     pub fn get_line_number(&self, source: &str) -> usize {
         let mut line = 1;
         for c in source.chars().skip(self.start).take(self.end - self.start) {
@@ -33,17 +48,34 @@ impl Display for Span {
     }
 }
 
+
+
 #[derive(Debug, PartialEq, Clone)]
-pub enum Statment {
+pub struct Program {
+    pub statements: Vec<Statement>,
+}
+
+impl Program {
+    pub fn new(statements: Vec<Statement>) -> Self {
+        Program { statements }
+    }
+}
+
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Statement {
     Bind(Bind),
     TypeDecl(TypeDecl),
-    TypeAssign(TypeAssign)
+    TypeAssign(TypeAssign),
 }
+
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Identifier(Identifier), // e.g. foo
-    Id(Identifier), // e.g.  Maybe
+    Id(Identifier),         // e.g.  Maybe
     App(App),
     Condition(Box<Expr>, Box<Expr>, Box<Expr>, Span),
     Let(Vec<Bind>, Box<Expr>, Span),
@@ -55,7 +87,6 @@ pub enum Expr {
     List(Vec<Expr>, Span),
     Tuple(Vec<Expr>, Span),
 }
-
 
 impl Expr {
     pub fn get_span(&self) -> &Span {
@@ -71,89 +102,89 @@ impl Expr {
             Expr::Lambda(_, _, span) => span,
             Expr::Ann(_, _, span) => span,
             Expr::List(_, span) => span,
-            Expr::Tuple(_, span) => span
+            Expr::Tuple(_, span) => span,
         }
     }
 }
+
 
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct App {
     pub ident: Identifier,
     pub args: Vec<Expr>,
-    pub span: Span
-
+    pub span: Span,
 }
 
 impl App {
     pub fn new(ident: Identifier, args: Vec<Expr>, span: Span) -> Self {
-        App {
-            ident,
-            args,
-            span
-        }
+        App { ident, args, span }
     }
 }
 
-////////// Type Assignment
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAssign {
     pub id: Identifier,
     pub ty: Type,
-    pub span: Span
+    pub span: Span,
 }
 
 impl TypeAssign {
     pub fn new(id: Identifier, ty: Type, span: Span) -> Self {
-        TypeAssign {
-            id,
-            ty,
-            span
-        }
+        TypeAssign { id, ty, span }
     }
 }
 
-////////// Bind
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Bind {
-    pub id: Identifier,
+    pub name: Identifier,
     pub args: Vec<Pattern>,
     pub expr: Expr,
-    pub span: Span
+    pub span: Span,
 }
 
 impl Bind {
     pub fn new(id: Identifier, args: Vec<Pattern>, expr: Expr, span: Span) -> Self {
         Bind {
-            id,
+            name: id,
             args,
             expr,
-            span
+            span,
         }
     }
 }
 
 
-////////// Identifier
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, Eq)]
 pub struct Identifier {
     pub name: String,
-    pub span: Span
+    pub span: Span,
 }
 
 impl Identifier {
     pub fn new(name: String, span: Span) -> Self {
-        Identifier {
-            name,
-            span
-        }
+        Identifier { name, span }
     }
 }
 
-////////// Binary Operator
+impl PartialEq for Identifier {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Hash for Identifier {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+    }
+}
+
+
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum BinOp {
@@ -171,48 +202,51 @@ pub enum BinOp {
     Ineq,
     And,
     Or,
-    ListCons
+    ListCons,
 }
 
-////////// Type Declaration
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variant {
     pub id: Identifier,
-    pub types:  Vec<Type>,
-    pub span: Span
+    pub types: Vec<Type>,
+    pub span: Span,
 }
 
 impl Variant {
     pub fn new(id: Identifier, types: Vec<Type>, span: Span) -> Self {
-        Variant {
-            id,
-            types,
-            span
-        }
+        Variant { id, types, span }
     }
 }
 
+
+
 #[derive(Debug, PartialEq, Clone)]
-pub struct TypeDecl { // type X a b = A a | B b
-    pub name: Identifier, // X
-    pub typevars: Vec<Identifier>, // [a, b]
-    pub variants: Vec<Variant>, // [[A, [a]], [B, [b]]]
-    pub span: Span
+pub struct TypeDecl {
+    pub name: Identifier,
+    pub typevars: Vec<Identifier>,
+    pub variants: Vec<Variant>,
+    pub span: Span,
 }
 
 impl TypeDecl {
-    pub fn new(name: Identifier, typevars: Vec<Identifier>, variants: Vec<Variant>, span: Span) -> Self {
+    pub fn new(
+        name: Identifier,
+        typevars: Vec<Identifier>,
+        variants: Vec<Variant>,
+        span: Span,
+    ) -> Self {
         TypeDecl {
             name,
             typevars,
             variants,
-            span
+            span,
         }
     }
 }
 
-////////// Type
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
@@ -220,7 +254,7 @@ pub enum Type {
     Id(Identifier),
     App(Identifier, Vec<Type>, Span),
     Tuple(Vec<Type>, Span),
-    Func(Box<Type>, Vec<Type>, Span)
+    Func(Box<Type>, Vec<Type>, Span),
 }
 
 impl Type {
@@ -230,12 +264,12 @@ impl Type {
             Type::Id(id) => &id.span,
             Type::App(_, _, span) => span,
             Type::Tuple(_, span) => span,
-            Type::Func(_, _, span) => span
+            Type::Func(_, _, span) => span,
         }
     }
 }
 
-////////// Pattern
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Pattern {
@@ -244,7 +278,7 @@ pub enum Pattern {
     Variable(Identifier),
     Id(Identifier),
     App(Identifier, Vec<Type>, Span),
-    Literal(Literal)
+    Literal(Literal),
 }
 
 impl Pattern {
@@ -255,12 +289,12 @@ impl Pattern {
             Pattern::Variable(id) => &id.span,
             Pattern::Id(id) => &id.span,
             Pattern::App(_, _, span) => span,
-            Pattern::Literal(lit) => &lit.span
+            Pattern::Literal(lit) => &lit.span,
         }
     }
 }
 
-////////// Literal
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum LiteralKind {
@@ -268,39 +302,27 @@ pub enum LiteralKind {
     Float(f64),
     String(String),
     Char(char),
-    Bool(Bool)
+    Bool(Bool),
 }
+
+
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Literal {
     pub lit: LiteralKind,
-    pub span: Span
+    pub span: Span,
 }
 
 impl Literal {
     pub fn new(lit: LiteralKind, span: Span) -> Self {
-        Literal {
-            lit,
-            span
-        }
+        Literal { lit, span }
     }
 }
+
+
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Bool {
     True,
-    False
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Program {
-    pub statements: Vec<Statment>
-}
-
-impl Program {
-    pub fn new(statements: Vec<Statment>) -> Self {
-        Program {
-            statements
-        }
-    }
+    False,
 }
