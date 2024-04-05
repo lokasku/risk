@@ -4,6 +4,7 @@ use crate::ast::Span;
 #[derive(Debug, PartialEq, Clone)]
 pub enum ErrorKind {
     UnexpectedToken { expected: String, found: Span },
+    ExpectedNewline { found: Span },
     UnexpectedEOF { expected: String },
     UnexpectedEndOfInput,
     UnexpectedTokenInPattern { found: Span },
@@ -76,6 +77,17 @@ impl Error {
                             (filename, found.start..found.end)
                         )
                         .with_message("Too much expr")
+                    )
+                ;
+            },
+            ErrorKind::ExpectedNewline { found } => {
+                report = report.with_code("expected-newline")
+                    .with_message(format!("Expected newline at line {}",
+                                          found.get_line_number(source)))
+                    .with_label(Label::new(
+                            (filename, found.start..found.end)
+                        )
+                        .with_message("Expected newline")
                     )
                 ;
             }
