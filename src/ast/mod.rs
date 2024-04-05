@@ -1,20 +1,20 @@
 /*
-    Risk is a purely functional, strongly typed language.
-    Copyright (C) 2024, Lokasku & NightProg
+   Risk is a purely functional, strongly typed language.
+   Copyright (C) 2024, Lokasku & NightProg
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
@@ -48,8 +48,6 @@ impl Display for Span {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Program {
     pub statements: Vec<Statement>,
@@ -61,8 +59,6 @@ impl Program {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     Bind(Bind),
@@ -70,12 +66,10 @@ pub enum Statement {
     TypeAssign(TypeAssign),
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
-    Identifier(Identifier), // e.g. foo
-    Id(Identifier),         // e.g.  Maybe
+    Identifier(Identifier),   // e.g. foo
+    PCIdentifier(Identifier), // e.g.  Maybe
     App(App),
     Condition(Box<Expr>, Box<Expr>, Box<Expr>, Span),
     Let(Vec<Bind>, Box<Expr>, Span),
@@ -92,7 +86,7 @@ impl Expr {
     pub fn get_span(&self) -> &Span {
         match self {
             Expr::Identifier(id) => &id.span,
-            Expr::Id(id) => &id.span,
+            Expr::PCIdentifier(id) => &id.span,
             Expr::App(app) => &app.span,
             Expr::Condition(_, _, _, span) => span,
             Expr::Let(_, _, span) => span,
@@ -107,8 +101,6 @@ impl Expr {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct App {
     pub ident: Identifier,
@@ -122,8 +114,6 @@ impl App {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAssign {
     pub id: Identifier,
@@ -136,8 +126,6 @@ impl TypeAssign {
         TypeAssign { id, ty, span }
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Bind {
@@ -157,8 +145,6 @@ impl Bind {
         }
     }
 }
-
-
 
 #[derive(Debug, Clone, Eq)]
 pub struct Identifier {
@@ -184,8 +170,6 @@ impl Hash for Identifier {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum BinOp {
     Add,
@@ -205,8 +189,6 @@ pub enum BinOp {
     ListCons,
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct Variant {
     pub id: Identifier,
@@ -219,8 +201,6 @@ impl Variant {
         Variant { id, types, span }
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeDecl {
@@ -246,8 +226,6 @@ impl TypeDecl {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Generic(Identifier),
@@ -268,8 +246,6 @@ impl Type {
         }
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Pattern {
@@ -294,8 +270,6 @@ impl Pattern {
     }
 }
 
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum LiteralKind {
     Integer(i64),
@@ -304,8 +278,6 @@ pub enum LiteralKind {
     Char(char),
     Bool(Bool),
 }
-
-
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Literal {
@@ -318,8 +290,6 @@ impl Literal {
         Literal { lit, span }
     }
 }
-
-
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Bool {

@@ -1,20 +1,20 @@
 /*
-    Risk is a purely functional, strongly typed language.
-    Copyright (C) 2024, Lokasku & NightProg
+   Risk is a purely functional, strongly typed language.
+   Copyright (C) 2024, Lokasku & NightProg
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+   This program is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+   You should have received a copy of the GNU General Public License
+   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
 
 use crate::ast::{App, BinOp, Bool, Literal, LiteralKind, TypeDecl};
 use crate::parser::lexer::{lexer, Token};
@@ -247,16 +247,22 @@ impl<'a> Parser<'a> {
         let res = match self.peek().kind {
             lexer::TokenKind::Identifier(_) => self.parse_stmt_identifier(),
             lexer::TokenKind::Type => self.parse_type_decl(),
-            _ => Err(error::Error::new(error::ErrorKind::UnexpectedToken {
-                expected: "statement".to_string(),
-                found: self.peek().span.clone()
-            }, self.peek().span.clone()))
+            _ => Err(error::Error::new(
+                error::ErrorKind::UnexpectedToken {
+                    expected: "statement".to_string(),
+                    found: self.peek().span.clone(),
+                },
+                self.peek().span.clone(),
+            )),
         }?;
         if self.peek().kind != lexer::TokenKind::Eof {
             if self.peek().kind != lexer::TokenKind::Newline {
-                return Err(error::Error::new(error::ErrorKind::TooMuchExpr {
-                    found: self.peek().span.clone()
-                }, self.peek().span.clone()));
+                return Err(error::Error::new(
+                    error::ErrorKind::TooMuchExpr {
+                        found: self.peek().span.clone(),
+                    },
+                    self.peek().span.clone(),
+                ));
             }
         }
         Ok(res)
@@ -538,13 +544,18 @@ impl<'a> Parser<'a> {
             }
             lexer::TokenKind::False => {
                 self.advance();
-                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Bool(Bool::False), self.end_recording(index)))
-                )
-            },
+                Ok(ast::Expr::Literal(Literal::new(
+                    LiteralKind::Bool(Bool::False),
+                    self.end_recording(index),
+                )))
+            }
             lexer::TokenKind::Char(c) => {
                 self.advance();
-                Ok(ast::Expr::Literal(Literal::new(LiteralKind::Char(c.chars().next().unwrap()), self.end_recording(index))))
-            },
+                Ok(ast::Expr::Literal(Literal::new(
+                    LiteralKind::Char(c.chars().next().unwrap()),
+                    self.end_recording(index),
+                )))
+            }
             n @ (lexer::TokenKind::Identifier(_) | lexer::TokenKind::PCIdentifier(_)) => {
                 let id = self.expect_any_identifier()?;
                 let cloned = self.clone();
@@ -568,7 +579,7 @@ impl<'a> Parser<'a> {
 
                 match n {
                     lexer::TokenKind::Identifier(_) => Ok(ast::Expr::Identifier(id)),
-                    lexer::TokenKind::PCIdentifier(_) => Ok(ast::Expr::Id(id)),
+                    lexer::TokenKind::PCIdentifier(_) => Ok(ast::Expr::PCIdentifier(id)),
                     _ => unreachable!(),
                 }
             }
@@ -772,7 +783,7 @@ impl<'a> Parser<'a> {
                 self.advance();
                 let ty = self.parse_type()?;
                 self.expect_current(token![rbracket])?;
-                
+
                 Ok(ty)
             }
 
@@ -786,7 +797,7 @@ impl<'a> Parser<'a> {
                     let ty = self.parse_type()?;
                     tys.push(ty);
                 }
-                
+
                 Ok(ast::Type::Tuple(tys, self.end_recording(index)))
             }
 
