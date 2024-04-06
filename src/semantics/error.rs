@@ -16,30 +16,14 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use std::env;
-use std::fs;
-
-mod ast;
-mod parser;
-mod semantics;
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    if args.len() < 2 {
-        panic!("You must provide filecode.");
-    }
-
-    let content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
-
-    let mut parser = parser::Parser::new(&content);
-
-    let ast = parser.parse();
-
-    if let Err(e) = ast {
-        e.report(&args[1]);
-    } else {
-        let mut semantics = semantics::SemanticsAnalyzer::new(ast.unwrap());
-        semantics.analyze();
-        println!("{:#?}", semantics);
-    }
+#[derive(Debug)]
+pub enum SemanticError {
+    MultipleDeclarations,
+    TypeAlreadyDefined,
+    ReservedName,
+    WrongArity,
+    AlreadyTypedSymbol,
+    IllegalOperation,
+    UndefinedSymbol,
+    DataTypeMismatch,
 }
