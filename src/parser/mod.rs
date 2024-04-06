@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Program::new(statements))
     }
 
-    fn parse_statement(&mut self) -> ParserResult<ast::Statment> {
+    fn parse_statement(&mut self) -> ParserResult<ast::Statement> {
         self.oneline = false;
         if self.peek().kind == lexer::TokenKind::Newline {
             self.advance()?;
@@ -285,35 +285,19 @@ impl<'a> Parser<'a> {
         Ok(res)
     }
 
-    fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statment> {
+    fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statement> {
         self.oneline = true;
         let index = self.start_recording();
         let id = self.expect_identifier()?;
        if self.peek().kind == lexer::TokenKind::DoubleCollon {
             self.advance()?;
             let ty = self.parse_type()?;
-           Ok(ast::Statment::TypeAssign(ast::TypeAssign::new(id, ty, self.end_recording(index))))
+           Ok(ast::Statement::TypeAssign(ast::TypeAssign::new(id, ty, self.end_recording(index))))
        } else {
            self.back_up();
-           Ok(ast::Statment::Bind(self.parse_bind()?))
+           Ok(ast::Statement::Bind(self.parse_bind()?))
        }
   }
-  fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statement> {
-        let index = self.start_recording();
-        let id = self.expect_identifier()?;
-        if self.peek().kind == lexer::TokenKind::DoubleCollon {
-            self.advance();
-            let ty = self.parse_type()?;
-            Ok(ast::Statement::TypeAssign(ast::TypeAssign::new(
-                id,
-                ty,
-                self.end_recording(index),
-            )))
-        } else {
-            self.back_up();
-            Ok(ast::Statement::Bind(self.parse_bind()?))
-        }
-    }
   
     fn parse_type_decl(&mut self) -> ParserResult<ast::Statement> {
         let index = self.start_recording();
@@ -633,12 +617,6 @@ impl<'a> Parser<'a> {
                 }
                 self.oneline = true;
                 Ok(ast::Expr::Match(Box::new(expr), arms, self.end_recording(index)))
-            },
-                Ok(ast::Expr::Match(
-                    Box::new(expr),
-                    arms,
-                    self.end_recording(index),
-                ))
             }
 
             lexer::TokenKind::InversedSlash => {
