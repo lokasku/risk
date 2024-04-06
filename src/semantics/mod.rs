@@ -59,8 +59,7 @@ type VariantName = String;
 type TypeName = String;
 
 #[derive(Debug)]
-pub struct SemanticsAnalyzer {
-    pub input: Program,
+pub struct AnalysisOutput {
     pub errors: Vec<SemanticError>,
     pub warnings: Vec<SemanticWarning>,
     symbols: HashMap<Symbol, SymbolData>,
@@ -71,10 +70,9 @@ pub struct SemanticsAnalyzer {
     level: u16,
 }
 
-impl SemanticsAnalyzer {
-    pub fn new(input: Program) -> Self {
+impl AnalysisOutput {
+    pub fn new() -> Self {
         Self {
-            input,
             errors: Vec::new(),
             warnings: Vec::new(),
             symbols: HashMap::new(),
@@ -86,7 +84,7 @@ impl SemanticsAnalyzer {
         }
     }
 
-    pub fn find_identifier(&mut self, name: &str) -> Option<&mut SymbolData> {
+    fn find_identifier(&mut self, name: &str) -> Option<&mut SymbolData> {
         let mut sym = Symbol {
             name: name.into(),
             scope_id: self.scope_id,
@@ -109,7 +107,7 @@ impl SemanticsAnalyzer {
         None
     }
 
-    pub fn analyze(&mut self, statement: Statement) {
+    pub fn analyze_statement(&mut self, statement: Statement) {
         match statement {
             Statement::Bind(Bind { name, args, .. }) => {
                 if args.len() == 0 {
@@ -252,7 +250,7 @@ impl SemanticsAnalyzer {
                 self.scope_id += 1;
 
                 for bind in binds {
-                    self.analyze(Statement::Bind(bind));
+                    self.analyze_statement(Statement::Bind(bind));
                 }
 
                 self.analyze_expr(*expr);
@@ -294,5 +292,11 @@ impl SemanticsAnalyzer {
             }
             Expr::Literal(_) => {}
         }
+    }
+}
+
+pub fn analyze(analysis_output: &mut AnalysisOutput, input: Program) {
+    for statement in input.statements {
+        analysis_output.analyze_statement(statement);
     }
 }

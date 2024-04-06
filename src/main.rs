@@ -16,6 +16,8 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use semantics::analyze;
+use semantics::AnalysisOutput;
 use std::env;
 use std::fs;
 
@@ -38,8 +40,10 @@ fn main() {
     if let Err(e) = ast {
         e.report(&args[1]);
     } else {
-        let mut semantics = semantics::SemanticsAnalyzer::new(ast.unwrap());
-        semantics.analyze();
-        println!("{:#?}", semantics);
+        let mut semantics_analyzer = AnalysisOutput::new();
+
+        analyze(&mut semantics_analyzer, ast.unwrap());
+
+        println!("{:#?}", semantics_analyzer.errors);
     }
 }
