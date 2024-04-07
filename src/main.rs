@@ -40,10 +40,9 @@ fn main() {
     if let Err(e) = ast {
         e.report(&args[1]);
     } else {
-        let mut semantics_analyzer = AnalysisOutput::new();
+        let mut ao = AnalysisOutput::new();
 
-        analyze(&mut semantics_analyzer, ast.unwrap());
-
-        println!("{:#?}", semantics_analyzer.errors);
+        let ast = ast.unwrap();
+        analyze(&mut ao, ast);
     }
 }

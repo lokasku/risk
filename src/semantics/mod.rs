@@ -31,43 +31,44 @@ const BUILTIN_TYPES: [&str; 7] = [
 ];
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-struct Symbol {
+pub struct Symbol {
     name: String,
     scope_id: u16,
     level: u16,
 }
 
 #[derive(Debug, PartialEq)]
-struct SymbolData {
+pub struct SymbolData {
     arity: u8,
     used: bool,
 }
 
 #[derive(Debug)]
-struct TypeData {
+pub struct TypeData {
     arity: u8,
     used: bool,
 }
 
 #[derive(Debug)]
-struct VariantData {
+pub struct VariantData {
     arity: u8,
     used: bool,
 }
 
 type VariantName = String;
 type TypeName = String;
+type FuncName = String;
 
 #[derive(Debug)]
 pub struct AnalysisOutput {
     pub errors: Vec<SemanticError>,
     pub warnings: Vec<SemanticWarning>,
-    symbols: HashMap<Symbol, SymbolData>,
-    types: HashMap<TypeName, TypeData>,
-    variants: HashMap<VariantName, VariantData>,
-    signatures: Vec<Symbol>, // symbols to which a type has been assigned
-    scope_id: u16,
-    level: u16,
+    pub symbols: HashMap<Symbol, SymbolData>,
+    pub types: HashMap<TypeName, TypeData>,
+    pub variants: HashMap<VariantName, VariantData>,
+    pub signatures: Vec<FuncName>, // symbols to which a type has been assigned
+    pub scope_id: u16,
+    pub level: u16,
 }
 
 impl AnalysisOutput {
@@ -87,7 +88,7 @@ impl AnalysisOutput {
     fn find_identifier(&mut self, name: &str) -> Option<&mut SymbolData> {
         let mut sym = Symbol {
             name: name.into(),
-            scope_id: self.scope_id,
+            scope_id: self.scope_id + 1,
             level: 0,
         };
 
@@ -95,6 +96,7 @@ impl AnalysisOutput {
 
         for level in (0..=self.level).rev() {
             sym.level = level;
+            sym.scope_id -= 1;
 
             polonius!(|symbols| -> Option<&'polonius mut SymbolData> {
                 if let Some(data) = symbols.get_mut(&sym) {
@@ -102,26 +104,32 @@ impl AnalysisOutput {
                     polonius_return!(Some(data));
                 }
             });
-            sym.scope_id -= 1;
         }
         None
     }
 
     pub fn analyze_statement(&mut self, statement: Statement) {
         match statement {
-            Statement::Bind(Bind { name, args, .. }) => {
-                if args.len() == 0 {
-                    if !self.symbols.contains_key(&Symbol {
-                        name: name.name.clone(),
-                        scope_id: self.scope_id,
-                        level: self.level,
-                    }) {
+            Statement::Bind(Bind {
+                name, args, expr, ..
+            }) => {
+                let sym = Symbol {
+                    name: name.name.clone(),
+                    scope_id: self.scope_id,
+                    level: self.level,
+                };
+
+                let some_arguments = args.len() != 0;
+
+                if some_arguments {
+                    self.level += 1;
+                    self.scope_id += 1;
+                }
+
+                if !some_arguments {
+                    if !self.symbols.contains_key(&sym) {
                         self.symbols.insert(
-                            Symbol {
-                                name: name.name.clone(),
-                                scope_id: self.scope_id,
-                                level: self.level,
-                            },
+                            sym,
                             SymbolData {
                                 arity: 0,
                                 used: false,
@@ -130,26 +138,24 @@ impl AnalysisOutput {
                     } else {
                         self.errors.push(SemanticError::MultipleDeclarations);
                     }
-                } else {
-                    if let Some(data) = self.symbols.get_mut(&Symbol {
-                        name: name.name.clone(),
-                        scope_id: self.scope_id,
-                        level: self.level,
-                    }) {
-                        data.arity = args.len() as u8;
-                    } else {
-                        self.symbols.insert(
-                            Symbol {
-                                name: name.name.clone(),
-                                scope_id: self.scope_id,
-                                level: self.level,
-                            },
-                            SymbolData {
-                                arity: args.len() as u8,
-                                used: false,
-                            },
-                        );
-                    }
+                } else if !self.symbols.contains_key(&sym) {
+                    self.symbols.insert(
+                        sym,
+                        SymbolData {
+                            arity: args.len() as u8,
+                            used: false,
+                        },
+                    );
+                }
+
+                for arg in args {
+                    self.analyze_pattern(arg);
+                }
+
+                self.analyze_expr(expr);
+
+                if some_arguments {
+                    self.level -= 1;
                 }
             }
             Statement::TypeDecl(TypeDecl {
@@ -192,29 +198,21 @@ impl AnalysisOutput {
                     }
                 }
             }
-            Statement::TypeAssign(TypeAssign { id, .. }) => {
-                if !self.signatures.contains(&Symbol {
-                    name: id.name.clone(),
-                    scope_id: 0,
-                    level: 0,
-                }) {
-                    self.signatures.push(Symbol {
-                        name: id.name.clone(),
-                        scope_id: 0,
-                        level: 0,
-                    });
+            Statement::TypeAssign(TypeAssign { id, ty, .. }) => {
+                if !self.signatures.contains(&id.name) {
+                    self.signatures.push(id.name);
                 } else {
                     self.errors.push(SemanticError::AlreadyTypedSymbol);
                 }
+                self.analyze_type(ty);
             }
         }
     }
 
-    /// Analyze the expression, checking that there are no calls to non-existent symbols and that functions are applied to the right number of arguments.
     pub fn analyze_expr(&mut self, expr: Expr) {
         match expr {
             Expr::Identifier(Identifier { name, .. }) => {
-                if let None = self.find_identifier(name.as_str()) {
+                if self.find_identifier(name.as_str()).is_none() {
                     self.errors.push(SemanticError::UndefinedSymbol);
                 }
             }
@@ -226,9 +224,11 @@ impl AnalysisOutput {
                 }
             }
             Expr::App(App { ident, args, .. }) => {
-                if let Some(data) = self.find_identifier(ident.name.as_str()) {
-                    if data.arity != args.len() as u8 {
-                        self.errors.push(SemanticError::WrongArity);
+                if ident.name.chars().next().unwrap().is_lowercase() {
+                    if let Some(data) = self.find_identifier(ident.name.as_str()) {
+                        if data.arity != args.len() as u8 {
+                            self.errors.push(SemanticError::WrongArity);
+                        }
                     }
                 } else if let Some(data) = self.variants.get_mut(&ident.name) {
                     data.used = true;
@@ -237,7 +237,7 @@ impl AnalysisOutput {
                         self.errors.push(SemanticError::WrongArity);
                     }
                 } else {
-                    self.errors.push(SemanticError::UndefinedSymbol);
+                    self.errors.push(SemanticError::NotACallee);
                 }
             }
             Expr::Condition(condition, then, r#else, ..) => {
@@ -257,34 +257,45 @@ impl AnalysisOutput {
 
                 self.level -= 1;
             }
-
-            // TODO: Analyze patterns
             Expr::Match(referral, cases, ..) => {
                 self.analyze_expr(*referral);
 
                 for case in cases {
-                    // self.analyze_pattern(case.0);
-                    self.analyze_expr(*case.1)
+                    self.level += 1;
+                    self.scope_id += 1;
+
+                    self.analyze_pattern(*case.0);
+                    self.analyze_expr(*case.1);
+
+                    self.level -= 1;
                 }
             }
             Expr::BinOp(_, lhs, rhs, _) => {
                 self.analyze_expr(*lhs);
                 self.analyze_expr(*rhs);
             }
+            Expr::Lambda(args, expr, _) => {
+                let some_arguments = args.len() != 0;
 
-            // TODO: Analyze patterns
-            Expr::Lambda(_, expr, _) => {
-                // for arg in args {
-                //    self.analyze_pattern(arg);
-                // }
-                self.level += 1;
-                self.scope_id += 1;
+                if some_arguments {
+                    self.level += 1;
+                    self.scope_id += 1;
+
+                    for arg in args {
+                        self.analyze_pattern(arg);
+                    }
+                }
 
                 self.analyze_expr(*expr);
 
-                self.scope_id -= 1;
+                if some_arguments {
+                    self.level -= 1;
+                }
             }
-            Expr::Ann(expr, ..) => self.analyze_expr(*expr),
+            Expr::Ann(expr, r#type, ..) => {
+                self.analyze_expr(*expr);
+                self.analyze_type(r#type);
+            }
             Expr::List(exprs, ..) | Expr::Tuple(exprs, ..) => {
                 for expr in exprs {
                     self.analyze_expr(expr);
@@ -293,10 +304,101 @@ impl AnalysisOutput {
             Expr::Literal(_) => {}
         }
     }
+
+    pub fn analyze_pattern(&mut self, pattern: Pattern) {
+        match pattern {
+            Pattern::Variable(id) => {
+                let sym = Symbol {
+                    name: id.name.clone(),
+                    scope_id: self.scope_id,
+                    level: self.level,
+                };
+
+                if !self.symbols.contains_key(&sym) {
+                    self.symbols.insert(
+                        sym,
+                        SymbolData {
+                            arity: 0,
+                            used: false,
+                        },
+                    );
+                } else {
+                    self.errors.push(SemanticError::MultipleDeclarations);
+                }
+            }
+            Pattern::ListCons(lhs, rhs, _) => {
+                self.analyze_pattern(*lhs);
+                self.analyze_pattern(*rhs);
+            }
+            Pattern::App(id, patterns, ..) => {
+                if let Some(data) = self.variants.get_mut(&id.name) {
+                    data.used = true;
+
+                    if data.arity != patterns.len() as u8 {
+                        self.errors.push(SemanticError::WrongArity);
+                    }
+                } else {
+                    self.errors.push(SemanticError::UndefinedConstructor);
+                }
+                // for pattern in patterns {
+                //    self.analyze_pattern(pattern);
+                // }
+            }
+            Pattern::Id(id, ..) => {
+                if self.variants.get_mut(&id.name).is_none() {
+                    self.errors.push(SemanticError::UndefinedConstructor);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    pub fn analyze_type(&mut self, r#type: Type) {
+        match r#type {
+            Type::Id(Identifier { name, .. }) => {
+                if BUILTIN_TYPES.contains(&name.as_str()) {
+                } else if let Some(data) = self.types.get_mut(&name) {
+                    data.used = true;
+
+                    if data.arity != 0 {
+                        self.errors.push(SemanticError::WrongArity)
+                    }
+                } else {
+                    self.errors.push(SemanticError::UndefinedType)
+                }
+            }
+            Type::App(id, types, ..) => {
+                if BUILTIN_TYPES.contains(&id.name.as_str()) {
+                    self.errors.push(SemanticError::WrongArity)
+                } else if let Some(data) = self.types.get_mut(&id.name) {
+                    data.used = true;
+
+                    if types.len() as u8 != data.arity {
+                        self.errors.push(SemanticError::WrongArity)
+                    }
+                } else {
+                    self.errors.push(SemanticError::UndefinedType)
+                }
+            }
+            Type::Tuple(types, ..) => {
+                for ty in types {
+                    self.analyze_type(ty);
+                }
+            }
+            Type::Func(ret, args, ..) => {
+                for arg in args {
+                    self.analyze_type(arg);
+                }
+
+                self.analyze_type(*ret);
+            }
+            _ => {}
+        }
+    }
 }
 
-pub fn analyze(analysis_output: &mut AnalysisOutput, input: Program) {
+pub fn analyze(ao: &mut AnalysisOutput, input: Program) {
     for statement in input.statements {
-        analysis_output.analyze_statement(statement);
+        ao.analyze_statement(statement);
     }
 }

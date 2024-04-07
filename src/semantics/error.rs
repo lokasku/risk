@@ -23,7 +23,10 @@ pub enum SemanticError {
     ReservedName,
     WrongArity,
     AlreadyTypedSymbol,
-    IllegalOperation,
     UndefinedSymbol,
-    DataTypeMismatch,
+    UndefinedType,
+    NotACallee,
+    UndefinedConstructor,
+    A,
+    B
 }
