@@ -20,11 +20,13 @@ mod error;
 mod warning;
 
 use crate::ast::*;
-use crate::semantics::error::SemanticError;
+use crate::semantics::error::*;
 use crate::semantics::warning::SemanticWarning;
 use polonius_the_crab::{polonius, polonius_return};
 use std::collections::HashMap;
 use std::hash::Hash;
+
+use self::warning::SemanticWarningKind;
 
 const BUILTIN_TYPES: [&str; 7] = [
     "Integer", "Float", "Bool", "String", "Char", "True", "False",
@@ -96,7 +98,7 @@ impl AnalysisOutput {
 
         for level in (0..=self.level).rev() {
             sym.level = level;
-            sym.scope_id -= 1;
+            sym.scope_id = if sym.level == 0 { 0 } else { sym.scope_id - 1 };
 
             polonius!(|symbols| -> Option<&'polonius mut SymbolData> {
                 if let Some(data) = symbols.get_mut(&sym) {
@@ -111,7 +113,10 @@ impl AnalysisOutput {
     pub fn analyze_statement(&mut self, statement: Statement) {
         match statement {
             Statement::Bind(Bind {
-                name, args, expr, ..
+                name,
+                args,
+                expr,
+                span,
             }) => {
                 let sym = Symbol {
                     name: name.name.clone(),
@@ -120,11 +125,6 @@ impl AnalysisOutput {
                 };
 
                 let some_arguments = args.len() != 0;
-
-                if some_arguments {
-                    self.level += 1;
-                    self.scope_id += 1;
-                }
 
                 if !some_arguments {
                     if !self.symbols.contains_key(&sym) {
@@ -136,7 +136,13 @@ impl AnalysisOutput {
                             },
                         );
                     } else {
-                        self.errors.push(SemanticError::MultipleDeclarations);
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::MultipleDeclarations {
+                                name: name.name,
+                                span: name.span,
+                            },
+                            span: span.clone(),
+                        });
                     }
                 } else if !self.symbols.contains_key(&sym) {
                     self.symbols.insert(
@@ -148,11 +154,16 @@ impl AnalysisOutput {
                     );
                 }
 
-                for arg in args {
-                    self.analyze_pattern(arg);
+                if some_arguments {
+                    self.level += 1;
+                    self.scope_id += 1;
+
+                    for arg in args {
+                        self.analyze_pattern(arg, span.clone());
+                    }
                 }
 
-                self.analyze_expr(expr);
+                self.analyze_expr(expr, span);
 
                 if some_arguments {
                     self.level -= 1;
@@ -162,7 +173,7 @@ impl AnalysisOutput {
                 name,
                 variants,
                 typevars,
-                ..
+                span,
             }) => {
                 if !self.types.contains_key(&name.name) {
                     if !BUILTIN_TYPES.contains(&name.name.as_str()) {
@@ -174,10 +185,21 @@ impl AnalysisOutput {
                             },
                         );
                     } else {
-                        self.errors.push(SemanticError::ReservedName);
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::ReservedName {
+                                name: name.name,
+                                span: name.span,
+                            },
+                            span: span.clone(),
+                        });
                     }
                 } else {
-                    self.errors.push(SemanticError::TypeAlreadyDefined);
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::TypeAlreadyDefined {
+                            type_name: name.name,
+                        },
+                        span: span.clone(),
+                    });
                 }
 
                 for variant in variants {
@@ -191,61 +213,144 @@ impl AnalysisOutput {
                                 },
                             );
                         } else {
-                            self.errors.push(SemanticError::ReservedName);
+                            self.errors.push(SemanticError {
+                                kind: SemanticErrorKind::ReservedName {
+                                    name: variant.id.name,
+                                    span: variant.id.span,
+                                },
+                                span: span.clone(),
+                            });
                         }
                     } else {
-                        self.errors.push(SemanticError::MultipleDeclarations);
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::MultipleDeclarations {
+                                name: variant.id.name,
+                                span: variant.id.span,
+                            },
+                            span: span.clone(),
+                        });
+                    }
+
+                    for ty in variant.types {
+                        self.analyze_type(ty, span.clone());
                     }
                 }
             }
-            Statement::TypeAssign(TypeAssign { id, ty, .. }) => {
+            Statement::TypeAssign(TypeAssign { id, ty, span }) => {
                 if !self.signatures.contains(&id.name) {
                     self.signatures.push(id.name);
                 } else {
-                    self.errors.push(SemanticError::AlreadyTypedSymbol);
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::AlreadyTypedSymbol {
+                            symbol_name: id.name,
+                        },
+                        span: span.clone(),
+                    });
                 }
-                self.analyze_type(ty);
+                self.analyze_type(ty, span);
             }
         }
     }
 
-    pub fn analyze_expr(&mut self, expr: Expr) {
+    pub fn analyze_expr(&mut self, expr: Expr, span_context: Span) {
         match expr {
-            Expr::Identifier(Identifier { name, .. }) => {
-                if self.find_identifier(name.as_str()).is_none() {
-                    self.errors.push(SemanticError::UndefinedSymbol);
+            Expr::Identifier(Identifier { name, span }) => {
+                if let Some(data) = self.find_identifier(name.as_str()) {
+                    let arity = data.arity;
+                    if arity != 0 {
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: arity as usize,
+                                found: 0,
+                                span,
+                            },
+                            span: span_context,
+                        });
+                    }
+                } else {
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::UndefinedSymbol {
+                            symbol_name: name,
+                            span,
+                        },
+                        span: span_context,
+                    });
                 }
             }
-            Expr::PCIdentifier(Identifier { name, .. }) => {
+            Expr::PCIdentifier(Identifier { name, span }) => {
                 if let Some(data) = self.variants.get_mut(&name) {
+                    let arity = data.arity;
+
+                    if arity != 0 {
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: arity as usize,
+                                found: 0,
+                                span,
+                            },
+                            span: span_context,
+                        });
+                    }
                     data.used = true;
                 } else {
-                    self.errors.push(SemanticError::UndefinedSymbol);
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::UndefinedConstructor {
+                            constructor_name: name,
+                            span,
+                        },
+                        span: span_context,
+                    });
                 }
             }
-            Expr::App(App { ident, args, .. }) => {
+            Expr::App(App { ident, args, span }) => {
                 if ident.name.chars().next().unwrap().is_lowercase() {
                     if let Some(data) = self.find_identifier(ident.name.as_str()) {
-                        if data.arity != args.len() as u8 {
-                            self.errors.push(SemanticError::WrongArity);
+                        let arity = data.arity;
+
+                        if arity != args.len() as u8 {
+                            self.errors.push(SemanticError {
+                                kind: SemanticErrorKind::WrongArity {
+                                    expected: arity as usize,
+                                    found: args.len(),
+                                    span,
+                                },
+                                span: span_context.clone(),
+                            });
                         }
                     }
                 } else if let Some(data) = self.variants.get_mut(&ident.name) {
                     data.used = true;
 
                     if data.arity != args.len() as u8 {
-                        self.errors.push(SemanticError::WrongArity);
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: data.arity as usize,
+                                found: args.len(),
+                                span,
+                            },
+                            span: span_context.clone(),
+                        });
                     }
                 } else {
-                    self.errors.push(SemanticError::NotACallee);
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::NotACallee {
+                            name: ident.name,
+                            span: span,
+                        },
+                        span: span_context.clone(),
+                    });
+                }
+
+                for arg in args {
+                    self.analyze_expr(arg, span_context.clone());
                 }
             }
-            Expr::Condition(condition, then, r#else, ..) => {
-                self.analyze_expr(*condition);
-                self.analyze_expr(*then);
-                self.analyze_expr(*r#else);
+            Expr::Condition(condition, then, r#else, span) => {
+                self.analyze_expr(*condition, span.clone());
+                self.analyze_expr(*then, span.clone());
+                self.analyze_expr(*r#else, span);
             }
-            Expr::Let(binds, expr, ..) => {
+            Expr::Let(binds, expr, span) => {
                 self.level += 1;
                 self.scope_id += 1;
 
@@ -253,26 +358,26 @@ impl AnalysisOutput {
                     self.analyze_statement(Statement::Bind(bind));
                 }
 
-                self.analyze_expr(*expr);
+                self.analyze_expr(*expr, span);
 
                 self.level -= 1;
             }
             Expr::Match(referral, cases, ..) => {
-                self.analyze_expr(*referral);
+                self.analyze_expr(*referral, span_context.clone());
 
                 for case in cases {
                     self.level += 1;
                     self.scope_id += 1;
 
-                    self.analyze_pattern(*case.0);
-                    self.analyze_expr(*case.1);
+                    self.analyze_pattern(*case.0, span_context.clone());
+                    self.analyze_expr(*case.1, span_context.clone());
 
                     self.level -= 1;
                 }
             }
             Expr::BinOp(_, lhs, rhs, _) => {
-                self.analyze_expr(*lhs);
-                self.analyze_expr(*rhs);
+                self.analyze_expr(*lhs, span_context.clone());
+                self.analyze_expr(*rhs, span_context);
             }
             Expr::Lambda(args, expr, _) => {
                 let some_arguments = args.len() != 0;
@@ -282,30 +387,30 @@ impl AnalysisOutput {
                     self.scope_id += 1;
 
                     for arg in args {
-                        self.analyze_pattern(arg);
+                        self.analyze_pattern(arg, span_context.clone());
                     }
                 }
 
-                self.analyze_expr(*expr);
+                self.analyze_expr(*expr, span_context);
 
                 if some_arguments {
                     self.level -= 1;
                 }
             }
             Expr::Ann(expr, r#type, ..) => {
-                self.analyze_expr(*expr);
-                self.analyze_type(r#type);
+                self.analyze_expr(*expr, span_context.clone());
+                self.analyze_type(r#type, span_context);
             }
             Expr::List(exprs, ..) | Expr::Tuple(exprs, ..) => {
                 for expr in exprs {
-                    self.analyze_expr(expr);
+                    self.analyze_expr(expr, span_context.clone());
                 }
             }
             Expr::Literal(_) => {}
         }
     }
 
-    pub fn analyze_pattern(&mut self, pattern: Pattern) {
+    pub fn analyze_pattern(&mut self, pattern: Pattern, span_context: Span) {
         match pattern {
             Pattern::Variable(id) => {
                 let sym = Symbol {
@@ -323,74 +428,145 @@ impl AnalysisOutput {
                         },
                     );
                 } else {
-                    self.errors.push(SemanticError::MultipleDeclarations);
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::MultipleDeclarations {
+                            name: id.name,
+                            span: id.span,
+                        },
+                        span: span_context.clone(),
+                    });
                 }
             }
             Pattern::ListCons(lhs, rhs, _) => {
-                self.analyze_pattern(*lhs);
-                self.analyze_pattern(*rhs);
+                self.analyze_pattern(*lhs, span_context.clone());
+                self.analyze_pattern(*rhs, span_context);
             }
             Pattern::App(id, patterns, ..) => {
                 if let Some(data) = self.variants.get_mut(&id.name) {
                     data.used = true;
 
                     if data.arity != patterns.len() as u8 {
-                        self.errors.push(SemanticError::WrongArity);
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: data.arity as usize,
+                                found: patterns.len(),
+                                span: id.span,
+                            },
+                            span: span_context.clone(),
+                        });
                     }
                 } else {
-                    self.errors.push(SemanticError::UndefinedConstructor);
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::UndefinedConstructor {
+                            constructor_name: id.name,
+                            span: id.span,
+                        },
+                        span: span_context.clone(),
+                    });
                 }
                 // for pattern in patterns {
                 //    self.analyze_pattern(pattern);
                 // }
             }
             Pattern::Id(id, ..) => {
-                if self.variants.get_mut(&id.name).is_none() {
-                    self.errors.push(SemanticError::UndefinedConstructor);
+                if let Some(data) = self.variants.get_mut(&id.name) {
+                    let arity = data.arity;
+
+                    if arity != 0 {
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: arity as usize,
+                                found: 0,
+                                span: id.span,
+                            },
+                            span: span_context.clone(),
+                        });
+                    }
+                } else {
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::UndefinedConstructor {
+                            constructor_name: id.name,
+                            span: id.span,
+                        },
+                        span: span_context,
+                    });
                 }
             }
             _ => {}
         }
     }
 
-    pub fn analyze_type(&mut self, r#type: Type) {
+    pub fn analyze_type(&mut self, r#type: Type, span_context: Span) {
         match r#type {
-            Type::Id(Identifier { name, .. }) => {
+            Type::Id(Identifier { name, span }) => {
                 if BUILTIN_TYPES.contains(&name.as_str()) {
                 } else if let Some(data) = self.types.get_mut(&name) {
                     data.used = true;
 
                     if data.arity != 0 {
-                        self.errors.push(SemanticError::WrongArity)
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: data.arity as usize,
+                                found: 0,
+                                span,
+                            },
+                            span: span_context,
+                        })
                     }
                 } else {
-                    self.errors.push(SemanticError::UndefinedType)
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::UndefinedType {
+                            type_name: name,
+                            span,
+                        },
+                        span: span_context,
+                    })
                 }
             }
-            Type::App(id, types, ..) => {
+            Type::App(id, types, span) => {
                 if BUILTIN_TYPES.contains(&id.name.as_str()) {
-                    self.errors.push(SemanticError::WrongArity)
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::WrongArity {
+                            expected: 0,
+                            found: types.len(),
+                            span,
+                        },
+                        span: span_context,
+                    })
                 } else if let Some(data) = self.types.get_mut(&id.name) {
                     data.used = true;
 
                     if types.len() as u8 != data.arity {
-                        self.errors.push(SemanticError::WrongArity)
+                        self.errors.push(SemanticError {
+                            kind: SemanticErrorKind::WrongArity {
+                                expected: data.arity as usize,
+                                found: types.len(),
+                                span: id.span,
+                            },
+                            span: span_context,
+                        })
                     }
                 } else {
-                    self.errors.push(SemanticError::UndefinedType)
+                    self.errors.push(SemanticError {
+                        kind: SemanticErrorKind::UndefinedType {
+                            type_name: id.name,
+                            span: id.span,
+                        },
+                        span: span_context,
+                    })
                 }
             }
             Type::Tuple(types, ..) => {
                 for ty in types {
-                    self.analyze_type(ty);
+                    self.analyze_type(ty, span_context.clone());
                 }
             }
             Type::Func(ret, args, ..) => {
                 for arg in args {
-                    self.analyze_type(arg);
+                    self.analyze_type(arg, span_context.clone());
                 }
 
-                self.analyze_type(*ret);
+                self.analyze_type(*ret, span_context);
             }
             _ => {}
         }
@@ -400,5 +576,32 @@ impl AnalysisOutput {
 pub fn analyze(ao: &mut AnalysisOutput, input: Program) {
     for statement in input.statements {
         ao.analyze_statement(statement);
+    }
+
+    for (sym, data) in ao.symbols.iter() {
+        if data.used == false {
+            ao.warnings.push(SemanticWarning {
+                kind: SemanticWarningKind::UnusedSymbol,
+                span: sym.name.clone(),
+            });
+        }
+    }
+
+    for (sym, data) in ao.types.iter() {
+        if data.used == false {
+            ao.warnings.push(SemanticWarning {
+                kind: SemanticWarningKind::UnusedType,
+                span: sym.clone(),
+            })
+        }
+    }
+
+    for (sym, data) in ao.variants.iter() {
+        if data.used == false {
+            ao.warnings.push(SemanticWarning {
+                kind: SemanticWarningKind::UnusedVariant,
+                span: sym.clone(),
+            })
+        }
     }
 }

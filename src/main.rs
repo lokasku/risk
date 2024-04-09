@@ -43,6 +43,15 @@ fn main() {
         let mut ao = AnalysisOutput::new();
 
         let ast = ast.unwrap();
+        // println!("AST ========\n{:#?}", ast);
+
         analyze(&mut ao, ast);
+
+        // println!("AO ========\n{:#?}", ao);
+
+        for se in ao.errors {
+            // println!("{:?}", se);
+            se.report(&args[1])
+        }
     }
 }

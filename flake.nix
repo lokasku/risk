@@ -39,7 +39,7 @@
         defaultPackage = self.packages.${system}.risk;
 
         devShell = pkgs.mkShell rec {
-          packages = with pkgs; [ toolchain pkgs.ghc pkgs.lalrpop ];
+          packages = with pkgs; [ toolchain pkgs.ghc ];
           RUST_BACKTRACE = 0;
           RUSTFLAGS = "-Zmacro-backtrace";
         };

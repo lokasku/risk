@@ -17,7 +17,14 @@
 */
 
 #[derive(Debug)]
-pub enum SemanticWarning {
-    UnusedVariable,
-    UnusedFunction,
+pub struct SemanticWarning {
+    pub kind: SemanticWarningKind,
+    pub span: String,
+}
+
+#[derive(Debug)]
+pub enum SemanticWarningKind {
+    UnusedSymbol,
+    UnusedType,
+    UnusedVariant,
 }
