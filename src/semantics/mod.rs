@@ -19,6 +19,7 @@
 mod error;
 mod warning;
 
+use self::warning::SemanticWarningKind;
 use crate::ast::*;
 use crate::semantics::error::*;
 use crate::semantics::warning::SemanticWarning;
@@ -26,15 +27,13 @@ use polonius_the_crab::{polonius, polonius_return};
 use std::collections::HashMap;
 use std::hash::Hash;
 
-use self::warning::SemanticWarningKind;
-
 const BUILTIN_TYPES: [&str; 7] = [
     "Integer", "Float", "Bool", "String", "Char", "True", "False",
 ];
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Symbol {
-    name: String,
+    span: Span,
     scope_id: u16,
     level: u16,
 }
@@ -57,8 +56,8 @@ pub struct VariantData {
     used: bool,
 }
 
-type VariantName = String;
-type TypeName = String;
+type VariantName = Span;
+type TypeName = Span;
 type FuncName = String;
 
 #[derive(Debug)]
@@ -87,9 +86,9 @@ impl AnalysisOutput {
         }
     }
 
-    fn find_identifier(&mut self, name: &str) -> Option<&mut SymbolData> {
+    fn find_identifier(&mut self, name: Span) -> Option<&mut SymbolData> {
         let mut sym = Symbol {
-            name: name.into(),
+            span: name,
             scope_id: self.scope_id + 1,
             level: 0,
         };
@@ -119,7 +118,7 @@ impl AnalysisOutput {
                 span,
             }) => {
                 let sym = Symbol {
-                    name: name.name.clone(),
+                    span: name.span.clone(),
                     scope_id: self.scope_id,
                     level: self.level,
                 };
@@ -175,10 +174,11 @@ impl AnalysisOutput {
                 typevars,
                 span,
             }) => {
-                if !self.types.contains_key(&name.name) {
+                if !self.types.contains_key(&name.span) {
                     if !BUILTIN_TYPES.contains(&name.name.as_str()) {
                         self.types.insert(
-                            name.name,
+                            // name.name,
+                            span.clone(),
                             TypeData {
                                 arity: typevars.len() as u8,
                                 used: false,
@@ -203,10 +203,10 @@ impl AnalysisOutput {
                 }
 
                 for variant in variants {
-                    if !self.variants.contains_key(&variant.id.name) {
+                    if !self.variants.contains_key(&variant.id.span) {
                         if !BUILTIN_TYPES.contains(&variant.id.name.as_str()) {
                             self.variants.insert(
-                                variant.id.name,
+                                variant.id.span,
                                 VariantData {
                                     arity: variant.types.len() as u8,
                                     used: false,
@@ -255,7 +255,7 @@ impl AnalysisOutput {
     pub fn analyze_expr(&mut self, expr: Expr, span_context: Span) {
         match expr {
             Expr::Identifier(Identifier { name, span }) => {
-                if let Some(data) = self.find_identifier(name.as_str()) {
+                if let Some(data) = self.find_identifier(span.clone()) {
                     let arity = data.arity;
                     if arity != 0 {
                         self.errors.push(SemanticError {
@@ -278,7 +278,7 @@ impl AnalysisOutput {
                 }
             }
             Expr::PCIdentifier(Identifier { name, span }) => {
-                if let Some(data) = self.variants.get_mut(&name) {
+                if let Some(data) = self.variants.get_mut(&span) {
                     let arity = data.arity;
 
                     if arity != 0 {
@@ -304,7 +304,7 @@ impl AnalysisOutput {
             }
             Expr::App(App { ident, args, span }) => {
                 if ident.name.chars().next().unwrap().is_lowercase() {
-                    if let Some(data) = self.find_identifier(ident.name.as_str()) {
+                    if let Some(data) = self.find_identifier(ident.span) {
                         let arity = data.arity;
 
                         if arity != args.len() as u8 {
@@ -318,7 +318,7 @@ impl AnalysisOutput {
                             });
                         }
                     }
-                } else if let Some(data) = self.variants.get_mut(&ident.name) {
+                } else if let Some(data) = self.variants.get_mut(&ident.span) {
                     data.used = true;
 
                     if data.arity != args.len() as u8 {
@@ -414,7 +414,7 @@ impl AnalysisOutput {
         match pattern {
             Pattern::Variable(id) => {
                 let sym = Symbol {
-                    name: id.name.clone(),
+                    span: id.span.clone(),
                     scope_id: self.scope_id,
                     level: self.level,
                 };
@@ -442,7 +442,7 @@ impl AnalysisOutput {
                 self.analyze_pattern(*rhs, span_context);
             }
             Pattern::App(id, patterns, ..) => {
-                if let Some(data) = self.variants.get_mut(&id.name) {
+                if let Some(data) = self.variants.get_mut(&id.span) {
                     data.used = true;
 
                     if data.arity != patterns.len() as u8 {
@@ -464,12 +464,13 @@ impl AnalysisOutput {
                         span: span_context.clone(),
                     });
                 }
+
                 // for pattern in patterns {
                 //    self.analyze_pattern(pattern);
                 // }
             }
             Pattern::Id(id, ..) => {
-                if let Some(data) = self.variants.get_mut(&id.name) {
+                if let Some(data) = self.variants.get_mut(&id.span) {
                     let arity = data.arity;
 
                     if arity != 0 {
@@ -500,7 +501,7 @@ impl AnalysisOutput {
         match r#type {
             Type::Id(Identifier { name, span }) => {
                 if BUILTIN_TYPES.contains(&name.as_str()) {
-                } else if let Some(data) = self.types.get_mut(&name) {
+                } else if let Some(data) = self.types.get_mut(&span) {
                     data.used = true;
 
                     if data.arity != 0 {
@@ -533,7 +534,7 @@ impl AnalysisOutput {
                         },
                         span: span_context,
                     })
-                } else if let Some(data) = self.types.get_mut(&id.name) {
+                } else if let Some(data) = self.types.get_mut(&id.span) {
                     data.used = true;
 
                     if types.len() as u8 != data.arity {
@@ -582,7 +583,7 @@ pub fn analyze(ao: &mut AnalysisOutput, input: Program) {
         if data.used == false {
             ao.warnings.push(SemanticWarning {
                 kind: SemanticWarningKind::UnusedSymbol,
-                span: sym.name.clone(),
+                span: sym.span.clone(),
             });
         }
     }

@@ -80,7 +80,8 @@ impl SemanticError {
                     .with_message(format!("Multiple declarations of '{}'", name))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message("Already defined previously"),
+                            .with_message("Already defined previously")
+                            .with_color(Color::Cyan)
                     )
                     .with_note("A symbol that takes no arguments cannot be instantiated several times, as it is considered a constant.");
             }
@@ -90,7 +91,8 @@ impl SemanticError {
                     .with_message(format!("Type '{}' is already defined", type_name))
                     .with_label(
                         Label::new((filename, self.span.start..self.span.end))
-                            .with_message("Type already defined"),
+                            .with_message("Type already defined")
+                            .with_color(Color::Cyan),
                     );
             }
             SemanticErrorKind::ReservedName { name, span } => {
@@ -99,7 +101,8 @@ impl SemanticError {
                     .with_message(format!("'{}' is a reserved name", name))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message("Reserved name"),
+                            .with_message("Reserved name")
+                            .with_color(Color::Cyan),
                     )
                     .with_note("Reserved names cannot be used as identifiers.");
             }
@@ -110,13 +113,11 @@ impl SemanticError {
             } => {
                 report = report
                     .with_code("wrong-arity")
-                    .with_message(format!(
-                        "Wrong arity: expected {} arguments, found {}",
-                        expected, found
-                    ))
+                    .with_message(format!("Expected {} arguments, found {}", expected, found))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message(format!("Expected {} arguments", expected)),
+                            .with_message(format!("Expected {} arguments", expected))
+                            .with_color(Color::Cyan),
                     );
             }
             SemanticErrorKind::AlreadyTypedSymbol { symbol_name } => {
@@ -125,7 +126,8 @@ impl SemanticError {
                     .with_message(format!("'{}' is already typed", symbol_name))
                     .with_label(
                         Label::new((filename, self.span.start..self.span.end))
-                            .with_message("Symbol already typed"),
+                            .with_message("Symbol already typed")
+                            .with_color(Color::Cyan),
                     );
             }
             SemanticErrorKind::UndefinedSymbol { symbol_name, span } => {
@@ -134,7 +136,8 @@ impl SemanticError {
                     .with_message(format!("Undefined symbol '{}'", symbol_name))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message("Symbol not found"),
+                            .with_message("Symbol not found")
+                            .with_color(Color::Cyan),
                     );
             }
             SemanticErrorKind::UndefinedType { type_name, span } => {
@@ -143,7 +146,8 @@ impl SemanticError {
                     .with_message(format!("Undefined type '{}'", type_name))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message("Type not found"),
+                            .with_message("Type not found")
+                            .with_color(Color::Cyan),
                     );
             }
             SemanticErrorKind::NotACallee { name, span } => {
@@ -152,8 +156,10 @@ impl SemanticError {
                     .with_message(format!("'{}' is not a callee", name))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message("Not a callee"),
-                    );
+                            .with_message("Not a callee")
+                            .with_color(Color::Cyan)
+                    )
+                    .with_note("Callee are symbols that take arguments, such as constructors or function names.");
             }
             SemanticErrorKind::UndefinedConstructor {
                 constructor_name,
@@ -164,7 +170,8 @@ impl SemanticError {
                     .with_message(format!("Undefined constructor '{}'", constructor_name))
                     .with_label(
                         Label::new((filename, span.start..span.end))
-                            .with_message("Constructor not found"),
+                            .with_message("Constructor not found")
+                            .with_color(Color::Cyan),
                     );
             }
         }

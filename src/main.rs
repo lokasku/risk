@@ -50,8 +50,11 @@ fn main() {
         // println!("AO ========\n{:#?}", ao);
 
         for se in ao.errors {
-            // println!("{:?}", se);
             se.report(&args[1])
+        }
+
+        for sw in ao.warnings {
+            sw.report(&args[1])
         }
     }
 }
