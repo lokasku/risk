@@ -83,7 +83,7 @@ impl<'a> Parser<'a> {
                 self.peek().span,
             ));
         }
-        if self.oneline && self.peek().kind == lexer::TokenKind::Newline {
+        if self.oneline && self.peek().kind == lexer::TokenKind::Newline && !self.is_eof_with_whitespace() {
             return Err(error::Error::new(
                 error::ErrorKind::ExpectedNewline {
                     found: self.peek().span.clone(),
@@ -106,6 +106,16 @@ impl<'a> Parser<'a> {
             return self.advance();
         }
         Ok(token)
+    }
+    
+    fn is_eof_with_whitespace(&self) -> bool {
+        let mut offset = 1;
+        while self.tokens.len() > self.current + offset && self.tokens[self.current + offset].kind.is_whitespace() {
+            offset += 1;
+        }
+        
+        self.current + offset + 1 >= self.tokens.len()
+        
     }
 
     fn expect(&mut self, token: Token<'a>) -> ParserResult<Token<'a>> {
@@ -263,9 +273,6 @@ impl<'a> Parser<'a> {
 
     fn parse_statement(&mut self) -> ParserResult<ast::Statement> {
         self.oneline = false;
-        if self.peek().kind == lexer::TokenKind::Newline {
-            self.advance()?;
-        }
         let res = match self.peek().kind {
             lexer::TokenKind::Identifier(_) => self.parse_stmt_identifier(),
             lexer::TokenKind::Type => self.parse_type_decl(),
@@ -277,16 +284,8 @@ impl<'a> Parser<'a> {
                 self.peek().span.clone(),
             )),
         }?;
-        if self.peek().kind != lexer::TokenKind::Eof {
-            if self.peek().kind != lexer::TokenKind::Newline {
-                return Err(error::Error::new(
-                    error::ErrorKind::TooMuchExpr {
-                        found: self.peek().span.clone(),
-                    },
-                    self.peek().span.clone(),
-                ));
-            }
-        }
+        self.match_token(lexer::TokenKind::Newline)?;
+        
         Ok(res)
     }
 
@@ -731,12 +730,12 @@ impl<'a> Parser<'a> {
             n if n.is_identifier() => {
                 let id = self.expect_any_identifier()?;
                 let cloned = self.clone();
-                let mut ty = self.parse_type();
+                let mut ty = self.parse_pattern();
                 if ty.is_ok() {
                     let mut types = vec![ty.clone().unwrap()];
                     while ty.is_ok() {
                         types.push(ty.unwrap());
-                        ty = self.parse_type();
+                        ty = self.parse_pattern();
                     }
 
                     return Ok(ast::Pattern::App(id, types, self.end_recording(index)));

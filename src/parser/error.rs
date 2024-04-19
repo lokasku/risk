@@ -57,7 +57,8 @@ impl Error {
                     ))
                     .with_label(
                         Label::new((filename, found.start..found.end))
-                            .with_message(format!("Expected {}", expected)),
+                            .with_message(format!("Expected {}", expected))
+                            .with_message(format!("found {:?}", found.input)),
                     );
             }
             ErrorKind::UnexpectedEOF { expected } => {
@@ -112,17 +113,6 @@ impl Error {
                     .with_label(
                         Label::new((filename, found.start..found.end))
                             .with_message("Expected newline"),
-                    );
-
-                report = report
-                    .with_code("too-much-expr")
-                    .with_message(format!(
-                        "Too much expr found at line {}",
-                        found.get_line_number(source)
-                    ))
-                    .with_label(
-                        Label::new((filename, found.start..found.end))
-                            .with_message("Too much expr"),
                     );
             }
         }
