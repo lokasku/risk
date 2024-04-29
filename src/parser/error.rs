@@ -52,12 +52,11 @@ impl Error {
                 report = report
                     .with_code("unexpected-token")
                     .with_message(format!(
-                        "Unexpected token found at line {}",
-                        found.get_line_number(source)
+                        "Unexpected token found at line {}, expected {}",
+                        found.get_line_number(source), expected
                     ))
                     .with_label(
                         Label::new((filename, found.start..found.end))
-                            .with_message(format!("Expected {}", expected))
                             .with_message(format!("found {:?}", found.input)),
                     );
             }
