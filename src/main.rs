@@ -39,7 +39,6 @@ fn main() {
     if let Err(e) = ast {
         e.report(&args[1]);
     } else {
-
         println!("{:#?}", ast.clone().unwrap());
         let mut semantics_analyzer = AnalysisOutput::new();
         let mut ao = AnalysisOutput::new();

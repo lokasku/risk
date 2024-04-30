@@ -4,5 +4,5 @@ pub enum TypeCheckerErrorKind {
     InfiniteType,
     AmbiguousType,
     IncompatibleTypes,
-    Unification
+    Unification,
 }

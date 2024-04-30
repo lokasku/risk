@@ -17,8 +17,8 @@
 */
 
 mod error;
-mod warning;
 mod tc;
+mod warning;
 
 use self::warning::SemanticWarningKind;
 use crate::ast::*;
@@ -253,9 +253,9 @@ impl AnalysisOutput {
         }
     }
 
-    pub fn analyze_expr(&mut self, expr: Expr, span_context: Span) {
+    pub fn analyze_expr(&mut self, expr: ParsedExpr, span_context: Span) {
         match expr {
-            Expr::Identifier(Identifier { name, span }) => {
+            ParsedExpr::Identifier { id: Identifier { name, span } } => {
                 if let Some(data) = self.find_identifier(span.clone()) {
                     let arity = data.arity;
                     if arity != 0 {
@@ -278,7 +278,7 @@ impl AnalysisOutput {
                     });
                 }
             }
-            Expr::PCIdentifier(Identifier { name, span }) => {
+            ParsedExpr::PCIdentifier { id: Identifier { name, span } } => {
                 if let Some(data) = self.variants.get_mut(&span) {
                     let arity = data.arity;
 
@@ -303,7 +303,7 @@ impl AnalysisOutput {
                     });
                 }
             }
-            Expr::App(App { ident, args, span }) => {
+            ParsedExpr::App(App { ident, args, span }) => {
                 if ident.name.chars().next().unwrap().is_lowercase() {
                     if let Some(data) = self.find_identifier(ident.span) {
                         let arity = data.arity;
@@ -346,12 +346,12 @@ impl AnalysisOutput {
                     self.analyze_expr(arg, span_context.clone());
                 }
             }
-            Expr::Condition(condition, then, r#else, span) => {
-                self.analyze_expr(*condition, span.clone());
-                self.analyze_expr(*then, span.clone());
-                self.analyze_expr(*r#else, span);
+            ParsedExpr::Condition { cond, then, els, ann } => {
+                self.analyze_expr(*cond, ann.clone());
+                self.analyze_expr(*then, ann.clone());
+                self.analyze_expr(*els, ann);
             }
-            Expr::Let(binds, expr, span) => {
+            ParsedExpr::Let { binds, ret, ann } => {
                 self.level += 1;
                 self.scope_id += 1;
 
@@ -359,11 +359,11 @@ impl AnalysisOutput {
                     self.analyze_statement(Statement::Bind(bind));
                 }
 
-                self.analyze_expr(*expr, span);
+                self.analyze_expr(*ret, ann);
 
                 self.level -= 1;
             }
-            Expr::Match(referral, cases, ..) => {
+            ParsedExpr::Match { referral, cases, .. } => {
                 self.analyze_expr(*referral, span_context.clone());
 
                 for case in cases {
@@ -376,11 +376,11 @@ impl AnalysisOutput {
                     self.level -= 1;
                 }
             }
-            Expr::BinOp(_, lhs, rhs, _) => {
+            ParsedExpr::BinOp { lhs, rhs, .. } => {
                 self.analyze_expr(*lhs, span_context.clone());
                 self.analyze_expr(*rhs, span_context);
             }
-            Expr::Lambda(args, expr, _) => {
+            ParsedExpr::Lambda { args, ret, .. } => {
                 let some_arguments = args.len() != 0;
 
                 if some_arguments {
@@ -392,22 +392,22 @@ impl AnalysisOutput {
                     }
                 }
 
-                self.analyze_expr(*expr, span_context);
+                self.analyze_expr(*ret, span_context);
 
                 if some_arguments {
                     self.level -= 1;
                 }
             }
-            Expr::Ann(expr, r#type, ..) => {
+            ParsedExpr::Ann { expr, ann, .. } => {
                 self.analyze_expr(*expr, span_context.clone());
-                self.analyze_type(r#type, span_context);
+                self.analyze_type(ann.1, span_context);
             }
-            Expr::List(exprs, ..) | Expr::Tuple(exprs, ..) => {
-                for expr in exprs {
-                    self.analyze_expr(expr, span_context.clone());
+            ParsedExpr::List { list, ..} | ParsedExpr::Tuple { list, .. } => {
+                for item in list {
+                    self.analyze_expr(item, span_context.clone());
                 }
             }
-            Expr::Literal(_) => {}
+            ParsedExpr::Literal(_) => {}
         }
     }
 

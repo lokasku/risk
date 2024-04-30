@@ -81,36 +81,73 @@ pub enum Statement {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Expr {
-    Identifier(Identifier),   // e.g. foo
-    PCIdentifier(Identifier), // e.g. Maybe
+pub enum AnnExpr<Annot = ()> {
+    Identifier {
+        id: Identifier,
+    },
+    PCIdentifier {
+        id: Identifier,
+    },
     App(App),
-    Condition(Box<Expr>, Box<Expr>, Box<Expr>, Span),
-    Let(Vec<Bind>, Box<Expr>, Span),
-    Match(Box<Expr>, Vec<(Box<Pattern>, Box<Expr>)>, Span),
+    Condition {
+        cond: Box<AnnExpr<Annot>>,
+        then: Box<AnnExpr<Annot>>,
+        els: Box<AnnExpr<Annot>>,
+        ann: Annot,
+    },
+    Let {
+        binds: Vec<Bind>,
+        ret: Box<AnnExpr<Annot>>,
+        ann: Annot,
+    },
+    Match {
+        referral: Box<AnnExpr<Annot>>,
+        cases: Vec<(Box<Pattern>, Box<AnnExpr<Annot>>)>,
+        ann: Annot,
+    },
     Literal(Literal),
-    BinOp(BinOp, Box<Expr>, Box<Expr>, Span),
-    Lambda(Vec<Pattern>, Box<Expr>, Span),
-    Ann(Box<Expr>, Type, Span),
-    List(Vec<Expr>, Span),
-    Tuple(Vec<Expr>, Span),
+    BinOp {
+        op: BinOp,
+        lhs: Box<AnnExpr<Annot>>,
+        rhs: Box<AnnExpr<Annot>>,
+        ann: Annot,
+    },
+    Lambda {
+        args: Vec<Pattern>,
+        ret: Box<AnnExpr<Annot>>,
+        ann: Annot,
+    },
+    Ann {
+        expr: Box<AnnExpr<Annot>>,
+        ann: (Span, Type)
+    },
+    List {
+        list: Vec<AnnExpr<Annot>>,
+        ann: Annot,
+    },
+    Tuple {
+        list: Vec<AnnExpr<Annot>>,
+        ann: Annot,
+    },
 }
 
-impl Expr {
+pub type ParsedExpr = AnnExpr<Span>;
+
+impl ParsedExpr {
     pub fn get_span(&self) -> &Span {
         match self {
-            Expr::Identifier(id) => &id.span,
-            Expr::PCIdentifier(id) => &id.span,
-            Expr::App(app) => &app.span,
-            Expr::Condition(_, _, _, span) => span,
-            Expr::Let(_, _, span) => span,
-            Expr::Match(_, _, span) => span,
-            Expr::Literal(lit) => &lit.span,
-            Expr::BinOp(_, _, _, span) => span,
-            Expr::Lambda(_, _, span) => span,
-            Expr::Ann(_, _, span) => span,
-            Expr::List(_, span) => span,
-            Expr::Tuple(_, span) => span,
+            AnnExpr::Identifier { id } => &id.span,
+            AnnExpr::PCIdentifier { id } => &id.span,
+            AnnExpr::App(app) => &app.span,
+            AnnExpr::Condition { ann, .. } => ann,
+            AnnExpr::Let { ann, .. } => ann,
+            AnnExpr::Match { ann, .. } => ann,
+            AnnExpr::Literal(lit) => &lit.span,
+            AnnExpr::BinOp { ann, .. } => ann,
+            AnnExpr::Lambda { ann, .. } => ann,
+            AnnExpr::Ann { ann, .. } => &ann.0,
+            AnnExpr::List { ann, .. } => ann,
+            AnnExpr::Tuple { ann, .. } => ann,
         }
     }
 }
@@ -118,12 +155,12 @@ impl Expr {
 #[derive(Debug, PartialEq, Clone)]
 pub struct App {
     pub ident: Identifier,
-    pub args: Vec<Expr>,
+    pub args: Vec<ParsedExpr>,
     pub span: Span,
 }
 
 impl App {
-    pub fn new(ident: Identifier, args: Vec<Expr>, span: Span) -> Self {
+    pub fn new(ident: Identifier, args: Vec<ParsedExpr>, span: Span) -> Self {
         App { ident, args, span }
     }
 }
@@ -145,12 +182,12 @@ impl TypeAssign {
 pub struct Bind {
     pub name: Identifier,
     pub args: Vec<Pattern>,
-    pub expr: Expr,
+    pub expr: ParsedExpr,
     pub span: Span,
 }
 
 impl Bind {
-    pub fn new(id: Identifier, args: Vec<Pattern>, expr: Expr, span: Span) -> Self {
+    pub fn new(id: Identifier, args: Vec<Pattern>, expr: ParsedExpr, span: Span) -> Self {
         Bind {
             name: id,
             args,
