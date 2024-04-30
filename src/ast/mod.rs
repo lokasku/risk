@@ -267,7 +267,7 @@ pub enum Pattern {
     Wildcard(Span),
     Variable(Identifier),
     Id(Identifier),
-    App(Identifier, Vec<Type>, Span),
+    App(Identifier, Vec<Pattern>, Span),
     Literal(Literal),
 }
 

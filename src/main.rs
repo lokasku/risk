@@ -32,7 +32,6 @@ fn main() {
     }
 
     let content = fs::read_to_string(args[1].clone()).expect("Cannot read file for some reasons");
-
     let mut parser = parser::Parser::new(&content);
 
     let ast = parser.parse();
@@ -40,6 +39,9 @@ fn main() {
     if let Err(e) = ast {
         e.report(&args[1]);
     } else {
+
+        println!("{:#?}", ast.clone().unwrap());
+        let mut semantics_analyzer = AnalysisOutput::new();
         let mut ao = AnalysisOutput::new();
 
         let ast = ast.unwrap();
