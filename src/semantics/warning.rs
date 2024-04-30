@@ -16,8 +16,67 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+use crate::semantics::Span;
+use ariadne::*;
+
 #[derive(Debug)]
-pub enum SemanticWarning {
-    UnusedVariable,
-    UnusedFunction,
+pub struct SemanticWarning {
+    pub kind: SemanticWarningKind,
+    pub span: Span,
+}
+
+#[derive(Debug)]
+pub enum SemanticWarningKind {
+    UnusedSymbol,
+    UnusedType,
+    UnusedVariant,
+}
+
+impl SemanticWarning {
+    pub fn report(&self, filename: &str) {
+        let source = &std::fs::read_to_string(filename).unwrap();
+        let mut report = Report::build(
+            ReportKind::Warning,
+            filename,
+            self.span.get_line_number(source),
+        );
+
+        match &self.kind {
+            SemanticWarningKind::UnusedSymbol => {
+                report = report
+                    .with_code("unused-symbol")
+                    .with_message(format!("The '{}' symbol is never used.", self.span.input))
+                    .with_label(
+                        Label::new((filename, self.span.start..self.span.end))
+                            .with_message("Never used")
+                            .with_color(Color::Cyan),
+                    )
+            }
+            SemanticWarningKind::UnusedType => {
+                report = report
+                    .with_code("unused-type")
+                    .with_message(format!("The '{}' type is never used.", self.span.input))
+                    .with_label(
+                        Label::new((filename, self.span.start..self.span.end))
+                            .with_message("Never used")
+                            .with_color(Color::Cyan),
+                    )
+            }
+            SemanticWarningKind::UnusedVariant => {
+                report = report
+                    .with_code("unused-variant")
+                    .with_message(format!("The '{}' variant is never used.", self.span.input))
+                    .with_label(
+                        Label::new((filename, self.span.start..self.span.end))
+                            .with_message("Never used")
+                            .with_color(Color::Cyan),
+                    )
+            }
+        }
+
+        report
+            .finish()
+            .print((filename, Source::from(source)))
+            .unwrap();
+    }
 }

@@ -39,11 +39,24 @@ fn main() {
     if let Err(e) = ast {
         e.report(&args[1]);
     } else {
+
         println!("{:#?}", ast.clone().unwrap());
         let mut semantics_analyzer = AnalysisOutput::new();
+        let mut ao = AnalysisOutput::new();
 
-        analyze(&mut semantics_analyzer, ast.unwrap());
+        let ast = ast.unwrap();
+        // println!("AST ========\n{:#?}", ast);
 
-        println!("{:#?}", semantics_analyzer.errors);
+        analyze(&mut ao, ast);
+
+        // println!("AO ========\n{:#?}", ao);
+
+        for se in ao.errors {
+            se.report(&args[1])
+        }
+
+        for sw in ao.warnings {
+            sw.report(&args[1])
+        }
     }
 }

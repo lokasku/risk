@@ -19,7 +19,7 @@
 use std::fmt::Display;
 use std::hash::{Hash, Hasher};
 
-#[derive(Debug, PartialEq, Clone, Eq, Hash)]
+#[derive(Debug, Clone)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -41,6 +41,20 @@ impl Span {
         line
     }
 }
+
+impl Hash for Span {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.input.hash(state);
+    }
+}
+
+impl PartialEq for Span {
+    fn eq(&self, other: &Self) -> bool {
+        self.input == other.input
+    }
+}
+
+impl Eq for Span {}
 
 impl Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
