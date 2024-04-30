@@ -18,6 +18,7 @@
 
 mod error;
 mod warning;
+mod tc;
 
 use self::warning::SemanticWarningKind;
 use crate::ast::*;

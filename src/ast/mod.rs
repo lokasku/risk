@@ -83,7 +83,7 @@ pub enum Statement {
 #[derive(Debug, PartialEq, Clone)]
 pub enum Expr {
     Identifier(Identifier),   // e.g. foo
-    PCIdentifier(Identifier), // e.g.  Maybe
+    PCIdentifier(Identifier), // e.g. Maybe
     App(App),
     Condition(Box<Expr>, Box<Expr>, Box<Expr>, Span),
     Let(Vec<Bind>, Box<Expr>, Span),

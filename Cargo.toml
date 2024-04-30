@@ -11,5 +11,6 @@ keywords = ["pl", "fp", "language"]
 
 [dependencies]
 logos = { version = "0.14.0"}
+chumsky = "0.9.3"
 ariadne = { version = "0.4.0", features = ["auto-color"] }
 polonius-the-crab = "0.4.1"
