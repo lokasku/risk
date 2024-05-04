@@ -21,7 +21,7 @@ mod tc;
 mod warning;
 
 use self::warning::SemanticWarningKind;
-use crate::ast::*;
+use crate::ast::{self, *};
 use crate::semantics::error::*;
 use crate::semantics::warning::SemanticWarning;
 use polonius_the_crab::{polonius, polonius_return};
@@ -110,7 +110,7 @@ impl AnalysisOutput {
         None
     }
 
-    pub fn analyze_statement(&mut self, statement: Statement) {
+    pub fn analyze_statement(&mut self, statement: Statement<ast::Span>) {
         match statement {
             Statement::Bind(Bind {
                 name,
@@ -370,7 +370,7 @@ impl AnalysisOutput {
                     self.level += 1;
                     self.scope_id += 1;
 
-                    self.analyze_pattern(*case.0, span_context.clone());
+                    self.analyze_pattern(case.0, span_context.clone());
                     self.analyze_expr(*case.1, span_context.clone());
 
                     self.level -= 1;
@@ -575,7 +575,7 @@ impl AnalysisOutput {
     }
 }
 
-pub fn analyze(ao: &mut AnalysisOutput, input: Program) {
+pub fn analyze(ao: &mut AnalysisOutput, input: Program<ast::Span>) {
     for statement in input.statements {
         ao.analyze_statement(statement);
     }

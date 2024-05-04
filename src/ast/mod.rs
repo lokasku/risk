@@ -63,19 +63,19 @@ impl Display for Span {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Program {
-    pub statements: Vec<Statement>,
+pub struct Program<T> {
+    pub statements: Vec<Statement<T>>,
 }
 
-impl Program {
-    pub fn new(statements: Vec<Statement>) -> Self {
+impl<T> Program<T> {
+    pub fn new(statements: Vec<Statement<T>>) -> Self {
         Program { statements }
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Statement {
-    Bind(Bind),
+pub enum Statement<T> {
+    Bind(Bind<T>),
     TypeDecl(TypeDecl),
     TypeAssign(TypeAssign),
 }
@@ -88,7 +88,7 @@ pub enum AnnExpr<Annot = ()> {
     PCIdentifier {
         id: Identifier,
     },
-    App(App),
+    App(App<Annot>),
     Condition {
         cond: Box<AnnExpr<Annot>>,
         then: Box<AnnExpr<Annot>>,
@@ -96,13 +96,13 @@ pub enum AnnExpr<Annot = ()> {
         ann: Annot,
     },
     Let {
-        binds: Vec<Bind>,
+        binds: Vec<Bind<Annot>>,
         ret: Box<AnnExpr<Annot>>,
         ann: Annot,
     },
     Match {
         referral: Box<AnnExpr<Annot>>,
-        cases: Vec<(Box<Pattern>, Box<AnnExpr<Annot>>)>,
+        cases: Vec<(Pattern, Box<AnnExpr<Annot>>)>,
         ann: Annot,
     },
     Literal(Literal),
@@ -153,14 +153,14 @@ impl ParsedExpr {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct App {
+pub struct App<T> {
     pub ident: Identifier,
-    pub args: Vec<ParsedExpr>,
+    pub args: Vec<AnnExpr<T>>,
     pub span: Span,
 }
 
-impl App {
-    pub fn new(ident: Identifier, args: Vec<ParsedExpr>, span: Span) -> Self {
+impl<T> App<T> {
+    pub fn new(ident: Identifier, args: Vec<AnnExpr<T>>, span: Span) -> Self {
         App { ident, args, span }
     }
 }
@@ -179,15 +179,15 @@ impl TypeAssign {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Bind {
+pub struct Bind<T> {
     pub name: Identifier,
     pub args: Vec<Pattern>,
-    pub expr: ParsedExpr,
+    pub expr: AnnExpr<T>,
     pub span: Span,
 }
 
-impl Bind {
-    pub fn new(id: Identifier, args: Vec<Pattern>, expr: ParsedExpr, span: Span) -> Self {
+impl<T> Bind<T> {
+    pub fn new(id: Identifier, args: Vec<Pattern>, expr: AnnExpr<T>, span: Span) -> Self {
         Bind {
             name: id,
             args,

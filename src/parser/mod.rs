@@ -16,7 +16,7 @@
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-use crate::ast::{App, BinOp, Bool, Literal, LiteralKind, TypeDecl};
+use crate::ast::{App, BinOp, Bool, Literal, LiteralKind, TypeDecl, ParsedExpr};
 use crate::parser::lexer::{lexer, Token, TokenKind};
 use crate::{ast, token};
 
@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
         self.current >= self.tokens.len()
     }
 
-    pub fn parse(&mut self) -> ParserResult<ast::Program> {
+    pub fn parse(&mut self) -> ParserResult<ast::Program<ast::Span>> {
         let mut statements = Vec::new();
         while !self.is_eof() && self.peek().kind != lexer::TokenKind::Eof {
             statements.push(self.parse_statement()?);
@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Program::new(statements))
     }
 
-    fn parse_statement(&mut self) -> ParserResult<ast::Statement> {
+    fn parse_statement(&mut self) -> ParserResult<ast::Statement<ast::Span>> {
         self.oneline = false;
         let res = match self.peek().kind {
             lexer::TokenKind::Identifier(_) => self.parse_stmt_identifier(),
@@ -271,7 +271,7 @@ impl<'a> Parser<'a> {
         Ok(res)
     }
 
-    fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statement> {
+    fn parse_stmt_identifier(&mut self) -> ParserResult<ast::Statement<ast::Span>> {
         self.oneline = true;
         let index = self.start_recording();
         let id = self.expect_identifier()?;
@@ -289,7 +289,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_type_decl(&mut self) -> ParserResult<ast::Statement> {
+    fn parse_type_decl(&mut self) -> ParserResult<ast::Statement<ast::Span>> {
         let index = self.start_recording();
         self.advance()?;
         let id = self.expect_pc_identifier()?;
@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
         Ok(ast::Variant::new(id, ty, self.end_recording(index)))
     }
 
-    fn parse_bind(&mut self) -> ParserResult<ast::Bind> {
+    fn parse_bind(&mut self) -> ParserResult<ast::Bind<ast::Span>> {
         let index = self.start_recording();
         let id = self.expect_identifier()?;
         let mut args = Vec::new();
@@ -644,7 +644,7 @@ impl<'a> Parser<'a> {
                 self.expect_current(token![with])?;
                 let mut arms = Vec::new();
                 self.expect_current(token![|])?;
-                let arm_pat = Box::new(self.parse_pattern()?);
+                let arm_pat = self.parse_pattern()?;
                 self.expect_current(token![->])?;
                 let arm_expr = Box::new(self.parse_expr()?);
                 arms.push((arm_pat, arm_expr));
@@ -652,7 +652,7 @@ impl<'a> Parser<'a> {
                     let pat = Box::new(self.parse_pattern()?);
                     self.expect_current(token![->])?;
                     let expr = Box::new(self.parse_expr()?);
-                    arms.push((pat, expr));
+                    arms.push((*pat, expr));
                 }
                 self.oneline = true;
                 Ok(ast::ParsedExpr::Match {
