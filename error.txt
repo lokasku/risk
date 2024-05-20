@@ -1,0 +1,26 @@
+
+running 8 tests
+test parser::test::test_empty_program ... ok
+test parser::test::test_bind ... ok
+test parser::test::test_bind_with_params ... ok
+test parser::test::test_list ... ok
+test parser::test::test_app ... ok
+test parser::test::test_literal ... ok
+test parser::test::test_let ... ok
+test parser::test::test_match ... FAILED
+
+failures:
+
+---- parser::test::test_match stdout ----
+thread 'parser::test::test_match' panicked at src/parser/test.rs:9:5:
+assertion `left == right` failed
+  left: Ok(Program { statements: [Bind(Bind { name: Identifier { name: "a", span: Span { start: 0, end: 1, input: "a" } }, args: [], expr: Match(Literal(Literal { lit: Integer(3), span: Span { start: 10, end: 11, input: "3" } }), [(Literal(Literal { lit: Integer(3), span: Span { start: 19, end: 20, input: "3" } }), Literal(Literal { lit: Integer(4), span: Span { start: 24, end: 25, input: "4" } })), (Literal(Literal { lit: Integer(4), span: Span { start: 28, end: 29, input: "4" } }), Literal(Literal { lit: Integer(5), span: Span { start: 33, end: 34, input: "5" } }))], Span { start: 4, end: 34, input: "match 3 with | 3 -> 4 | 4 -> 5" }), span: Span { start: 0, end: 34, input: "a = match 3 with | 3 -> 4 | 4 -> 5" } })] })
+ right: Ok(Program { statements: [Bind(Bind { name: Identifier { name: "a", span: Span { start: 0, end: 1, input: "a" } }, args: [], expr: Match(Literal(Literal { lit: Integer(3), span: Span { start: 10, end: 11, input: "3" } }), [(Literal(Literal { lit: Integer(3), span: Span { start: 20, end: 21, input: "3" } }), Literal(Literal { lit: Integer(4), span: Span { start: 24, end: 25, input: "4" } })), (Literal(Literal { lit: Integer(4), span: Span { start: 27, end: 28, input: "4" } }), Literal(Literal { lit: Integer(5), span: Span { start: 33, end: 34, input: "5" } }))], Span { start: 4, end: 34, input: "match 3 with | 3 -> 4 | 4 -> 5" }), span: Span { start: 0, end: 34, input: "a = match 3 with | 3 -> 4 | 4 -> 5" } })] })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    parser::test::test_match
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
