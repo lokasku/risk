@@ -244,8 +244,8 @@ fn test_let() {
                 Bind::new(
                     Identifier::new("a".to_string(), span!(0, 1, "a")), 
                     vec![], 
-                    AnnExpr::Let(
-                        vec![Bind::new(
+                    AnnExpr::Let {
+                        binds: vec![Bind::new(
                             Identifier::new("x".to_string(), span!(8, 9, "x")), 
                             vec![], 
                             ParsedExpr::Literal(
@@ -256,11 +256,11 @@ fn test_let() {
                             ), 
                             span!(8, 13, "x = 3")
                         )], 
-                        Box::new(AnnExpr::Identifier(
-                            Identifier::new("x".to_string(), span!(18, 19, "x"))
-                        )), 
-                        span!(4, 19, "let x = 3; in x")
-                    ), 
+                        ret: Box::new(AnnExpr::Identifier {
+                            id: Identifier::new("x".to_string(), span!(18, 19, "x"))
+                        }), 
+                        ann: span!(4, 19, "let x = 3; in x")
+                    }, 
                     span!(0, 19, "a = let x = 3; in x")
                 )
             )],
@@ -277,23 +277,22 @@ fn test_match() {
                 Bind::new(
                     Identifier::new("a".to_string(), span!(0, 1, "a")), 
                     vec![], 
-                    ParsedExpr::Match(
-                        Box::new(ParsedExpr::Literal(
+                    ParsedExpr::Match {
+                        referral: Box::new(AnnExpr::Literal(
                             Literal::new(
                                 LiteralKind::Integer(3),
                                 span!(10, 11, "3")
                             )
                         )), 
-                        vec![
-                            (
-                                Box::new(
-                                    Pattern::Literal(
-                                        Literal::new(
-                                            LiteralKind::Integer(3),
-                                            span!(19, 20, "3")
-                                        )
+                        cases: vec![
+                            (   
+                                Pattern::Literal(
+                                    Literal::new(
+                                        LiteralKind::Integer(3),
+                                        span!(19, 20, "3")
                                     )
-                                ),
+                                )
+                                ,
                                 Box::new(
                                     ParsedExpr::Literal(
                                         Literal::new(
@@ -304,14 +303,13 @@ fn test_match() {
                                 )
                             ),
                             (
-                                Box::new(
-                                    Pattern::Literal(
-                                        Literal::new(
-                                            LiteralKind::Integer(4),
-                                            span!(28, 29, "4")
-                                        )
+                                Pattern::Literal(
+                                    Literal::new(
+                                        LiteralKind::Integer(4),
+                                        span!(28, 29, "4")
                                     )
-                                ),
+                                )
+                                ,
                                 Box::new(
                                     ParsedExpr::Literal(
                                         Literal::new(
@@ -323,8 +321,8 @@ fn test_match() {
                             ),
 
                         ], 
-                        span!(4, 34, "match 3 with | 3 -> 4 | 4 -> 5")
-                    ), 
+                        ann: span!(4, 34, "match 3 with | 3 -> 4 | 4 -> 5")
+                    }, 
                     span!(0, 34, "a = match 3 with | 3 -> 4 | 4 -> 5")
                 )
             )],
