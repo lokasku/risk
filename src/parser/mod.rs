@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
         match peek.kind {
             lexer::TokenKind::Identifier(id) => {
                 self.advance()?;
-                let span = self.end_recording(index);
+                let span = peek.span;
                 Ok(ast::Identifier::new(id.to_string(), span))
             }
             _ => Err(error::Error::new(
@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
         match peek.kind {
             lexer::TokenKind::PCIdentifier(id) => {
                 self.advance()?;
-                let span = self.end_recording(index);
+                let span = peek.span;
                 Ok(ast::Identifier::new(id.to_string(), span))
             }
             _ => Err(error::Error::new(
@@ -201,12 +201,12 @@ impl<'a> Parser<'a> {
         match peek.kind {
             lexer::TokenKind::Identifier(id) => {
                 self.advance()?;
-                let span = self.end_recording(index);
+                let span = peek.span;
                 Ok(ast::Identifier::new(id.to_string(), span))
             }
             lexer::TokenKind::PCIdentifier(id) => {
                 self.advance()?;
-                let span = self.end_recording(index);
+                let span = peek.span;
                 Ok(ast::Identifier::new(id.to_string(), span))
             }
             _ => Err(error::Error::new(
