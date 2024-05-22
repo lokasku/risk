@@ -47,9 +47,9 @@ fn main() {
         let mut ao = AnalysisOutput::new();
 
         let ast = ast.unwrap();
-        // println!("AST ========\n{:#?}", ast);
+        println!("AST ========\n{:#?}", ast.clone());
 
-        analyze(&mut ao, ast);
+        analyze(&mut ao, ast.clone());
 
         // println!("AO ========\n{:#?}", ao);
 
@@ -60,5 +60,10 @@ fn main() {
         for sw in ao.warnings {
             sw.report(&args[1])
         }
+
+        let mut chunk = compiler::compile_program(ast.statements);
+
+        chunk.dissassemble("test.txt");
+
     }
 }

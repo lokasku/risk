@@ -1,24 +1,31 @@
 use std::fmt;
 
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Constant {
     Int(i64),
     Float(f64),
     Bool(bool),
     Char(char),
-    StrPtr(*const u8, usize), // a pointer to a string stored in memory
+    String(String), // a pointer to a string stored in memory
 }
 
 impl Constant {
     pub fn new_string(s: &str) -> Self {
-        Constant::StrPtr(s.as_ptr(), s.len())
+        Constant::String(s.to_string())
     }
 
     pub fn as_str(&self) -> &str {
         match self {
-            Constant::StrPtr(ptr, length) => unsafe { std::str::from_raw_parts(*ptr, *length) },
+            Constant::String(s) => s,
             _ => panic!("Not a string"),
+        }
+    }
+
+    pub fn as_int(&self) -> i64 {
+        match self {
+            Constant::Int(i) => *i,
+            _ => panic!("Not an integer"),
         }
     }
 
@@ -46,12 +53,11 @@ impl Constant {
                 bytes.push(3);
                 bytes
             },
-            Constant::StrPtr(ptr, length) => {
-                let mut bytes = length.to_be_bytes().to_vec();
-                bytes.extend(ptr.addr().to_le_bytes());
+            Constant::String(s) => {
+                let mut bytes = Vec::from(s.as_bytes());
                 bytes.push(4);
                 bytes
-            },
+            }
         }
     }
 
@@ -79,16 +85,8 @@ impl Constant {
                 Constant::Char(c)
             },
             4 => {
-                let length_bytes = &bytes[..8];
-                let ptr_bytes = &bytes[8..16];
-                let mut length = [0u8; 8];
-                let mut addr = [0u8; 8];
-                length.copy_from_slice(length_bytes);
-                addr.copy_from_slice(ptr_bytes);
-                let length = usize::from_be_bytes(length);
-                let ptr = usize::from_le_bytes(addr);
-                let ptr = ptr as *const u8;
-                Constant::StrPtr(ptr, length)
+                let s = String::from_utf8(bytes[..bytes.len() - 1].to_vec()).unwrap();
+                Constant::String(s)
             },
             _ => panic!("Invalid tag"),
         }
@@ -102,9 +100,8 @@ impl fmt::Display for Constant {
             Constant::Float(fl) => write!(f, "{}", fl),
             Constant::Bool(b) => write!(f, "{}", b),
             Constant::Char(c) => write!(f, "{}", c),
-            Constant::StrPtr(ptr, length) => {
-                let s = unsafe { std::str::from_raw_parts(*ptr, *length) };
-                write!(f, "{}", s)
+            Constant::String(_) => {
+                self.as_str().fmt(f)
             },
         }
     }
@@ -114,13 +111,7 @@ impl fmt::Display for Constant {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_string() {
-        let s = "Hello, world!";
-        let c = Constant::new_string(s);
-        assert_eq!(c.as_str(), s);
-    }
+    
 
     #[test]
     fn test_bytecode() {

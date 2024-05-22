@@ -56,6 +56,8 @@ pub enum OpCode {
     Bind,
     TypeAssign,
     TypeDecl,
+
+    Vec
 }
 
 
@@ -109,6 +111,7 @@ impl From<u8> for OpCode {
             44 => OpCode::Bind,
             45 => OpCode::TypeAssign,
             46 => OpCode::TypeDecl,
+            47 => OpCode::Vec,
             _ => panic!("Invalid OpCode"),
         }
 

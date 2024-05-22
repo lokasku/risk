@@ -58,7 +58,7 @@ impl Eq for Span {}
 
 impl Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}){}..{}", self.input, self.start, self.end)
+        write!(f, "{}", self.input)
     }
 }
 
@@ -346,4 +346,11 @@ impl Literal {
 pub enum Bool {
     True,
     False,
+}
+
+
+impl Into<bool> for Bool {
+    fn into(self) -> bool {
+        self == Bool::True
+    }
 }
