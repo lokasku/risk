@@ -15,7 +15,8 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
+#![feature(str_from_raw_parts)]
+#![feature(strict_provenance)]
 use semantics::analyze;
 use semantics::AnalysisOutput;
 use std::env;
@@ -24,6 +25,8 @@ use std::fs;
 mod ast;
 mod parser;
 mod semantics;
+mod bytecode;
+mod compiler;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -44,9 +47,9 @@ fn main() {
         let mut ao = AnalysisOutput::new();
 
         let ast = ast.unwrap();
-        // println!("AST ========\n{:#?}", ast);
+        println!("AST ========\n{:#?}", ast.clone());
 
-        analyze(&mut ao, ast);
+        analyze(&mut ao, ast.clone());
 
         // println!("AO ========\n{:#?}", ao);
 
@@ -57,5 +60,10 @@ fn main() {
         for sw in ao.warnings {
             sw.report(&args[1])
         }
+
+        let mut chunk = compiler::compile_program(ast.statements);
+
+        chunk.dissassemble("test.txt");
+
     }
 }
