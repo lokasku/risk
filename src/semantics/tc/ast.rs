@@ -1,6 +1,7 @@
 use crate::ast::*;
 
-type TypedExpr = AnnExpr<(Span, Type)>;
+pub type Annot = (Span, Type);
+type TypedExpr = AnnExpr<Annot>;
 
 impl TypedExpr {
     pub fn get_span(&self) -> &Span {
@@ -20,3 +21,7 @@ impl TypedExpr {
         }
     }
 }
+
+// impl ParsedExpr {
+    
+// }

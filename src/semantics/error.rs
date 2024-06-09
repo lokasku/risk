@@ -20,12 +20,6 @@ use crate::semantics::Span;
 use ariadne::*;
 
 #[derive(Debug)]
-pub struct SemanticError {
-    pub kind: SemanticErrorKind,
-    pub span: Span,
-}
-
-#[derive(Debug)]
 pub enum SemanticErrorKind {
     MultipleDeclarations {
         name: String,
@@ -62,6 +56,12 @@ pub enum SemanticErrorKind {
         constructor_name: String,
         span: Span,
     },
+}
+
+#[derive(Debug)]
+pub struct SemanticError {
+    pub kind: SemanticErrorKind,
+    pub span: Span,
 }
 
 impl SemanticError {
