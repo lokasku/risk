@@ -57,6 +57,7 @@ impl Compiler {
         self.compile_identifer(&type_decl.name);
         self.compile_vec(type_decl.typevars.clone(), Self::compile_identifer);
         self.compile_vec(type_decl.variants.clone(), Self::compile_variant);
+        self.addOpCode(OpCode::TypeDecl);
         self.spans.pop();
     }
 
@@ -145,6 +146,7 @@ impl Compiler {
                 self.compile_expr(then);
                 self.compile_expr(els);
                 self.compile_expr(cond);
+                self.addOpCode(OpCode::ExprCondition);
                 self.spans.pop();
             },
             AnnExpr::Identifier { id } => {
@@ -241,8 +243,8 @@ impl Compiler {
             Type::Generic(gen) => {
                 self.spans.push(gen.span.clone());
                 let index = self.current_chunk.addConstant(Constant::new_string(&gen.name));
-                self.addByte(index as u8);
                 self.addOpCode(OpCode::TypeGeneric);
+                self.addByte(index as u8);
                 self.spans.pop();
             },
             Type::Tuple(tys, span) => {

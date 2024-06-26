@@ -85,6 +85,29 @@ impl Chunk {
                 print!("{:04} ", offset);
                 self.simpleInstruction("EXPR_APP", offset)
             },
+            OpCode::ExprList => {
+                print!("{:04} ", offset);
+                self.simpleInstruction("EXPR_LIST", offset)
+            },
+
+            OpCode::TypeGeneric => {
+                print!("{:04} ", offset);
+                self.constantInstruction("TYPE_GENERIC", offset)
+            },
+
+            OpCode::Variant => {
+                print!("{:04} ", offset);
+                self.simpleInstruction("VARIANT", offset)
+            },
+
+            OpCode::TypeDecl => {
+                print!("{:04} ", offset);
+                self.simpleInstruction("TYPE_DECL", offset)
+            },
+            OpCode::ExprCondition => {
+                print!("{:04} ", offset);
+                self.simpleInstruction("EXPR_CONDITION", offset)
+            }
 
             _ => {
                 panic!("Unknown opcode {:?}", instruction)
