@@ -1,7 +1,4 @@
 /target
 /.idea
 .direnv
-/test
-archive/
 .vscode/
-test.txt

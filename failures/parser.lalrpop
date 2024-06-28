@@ -1,0 +1,252 @@
+use super::ast::*;
+use std::str::FromStr;
+
+grammar;
+
+////////// Statement
+
+// pub Statment: Statment = {
+//     TypeAssign => Statment::TypeAssign(<>),
+//     "decl" <Bind> => Statment::Bind(<>),
+//     TypeAssign => Statment::TypeAssign(<>),
+// }
+
+////////// ExprX
+
+Expr = ExprX;
+
+pub Check: (Box<Pattern>, Box<Expr>) = {
+    "|" <a: Pattern> "->" <b: ExprX> => (Box::new(a), Box::new(b))
+}
+
+pub ExprX: Expr = {
+    "let" <binds: Binds> "in" <e:ExprX> => Expr::Let(binds, Box::new(e)),
+    "if" <_if:ExprX> "then" <_then:ExprX> "else" <_else:ExprX> =>
+        Expr::Condition(Box::new(_if), Box::new(_then), Box::new(_else)),
+    "match" <e:ExprX> "with" <v:Check+> "." =>
+        Expr::Match(Box::new(e), v),
+    "\\" <v:Pattern+> "->" <e:ExprX> => Expr::Lambda(v, Box::new(e)),
+    Expr0
+}
+
+////////// Expr0
+
+Annotation: Type = {
+    "::" <t: TAssign> => t
+}
+
+pub Expr0: Expr = {
+    <expr: Expr1> <ann: Annotation?> => match ann {
+        Some(type_) => Expr::Ann(Box::new(expr), type_),
+        None => expr
+    }
+}
+
+////////// Expr1
+
+Expr1 = BinOp1;
+
+// pub ExprAppart: Expr = {    
+//     #[precedence(level = "0")]
+//     <l:Expr1> "*" <r:Expr1> => Expr::BinOp(BinOp::Mul, l, r),
+//     <l:Expr1> "/" <r:Expr1> => Expr::BinOp(BinOp::Div, l, r),
+//     <l:Expr1> "^" <r:Expr1> => Expr::BinOp(BinOp::Exp, l, r),
+//     <l:Expr1> "%" <r:Expr1> => Expr::BinOp(BinOp::Mod, l, r),
+
+//     #[precedence(level = "1")] #[assoc(side = "left")]
+//     <l:Expr1> "-" <r:Expr1> => Expr::BinOp(BinOp::Sub, l, r),
+//     <l:Expr1> "+" <r:Expr1> => Expr::BinOp(BinOp::Add, l, r),
+
+//     #[precedence(level = "2")] #[assoc(side = "left")]
+//     <l:Expr1> "<" <r:Expr1> => Expr::BinOp(BinOp::LessThan, l, r),
+//     <l:Expr1> ">" <r:Expr1> => Expr::BinOp(BinOp::GreaterThan, l, r),
+//     <l:Expr1> ">=" <r:Expr1> => Expr::BinOp(BinOp::GreaterThanOrEq, l, r),
+//     <l:Expr1> "<=" <r:Expr1> => Expr::BinOp(BinOp::LessThanOrEq, l, r),
+//     <l:Expr1> "&&" <r:Expr1> => Expr::BinOp(BinOp::And, l, r),
+//     <l:Expr1> "||" <r:Expr1> => Expr::BinOp(BinOp::Or, l, r),
+//     <l:Expr1> "==" <r:Expr1> => Expr::BinOp(BinOp::Eq, l, r),
+//     <l:Expr1> "/=" <r:Expr1> => Expr::BinOp(BinOp::Ineq, l, r),
+//     <l:Expr1> ":" <r:Expr1> => Expr::BinOp(BinOp::ListCons, l, r),
+// }
+
+pub BinOp0: Expr = {
+    <l:BinOp0> "<" <r:BinOp1> => Expr::BinOp(BinOp::LessThan, l, r),
+    <l:BinOp0> ">" <r:BinOp1> => Expr::BinOp(BinOp::GreaterThan, l, r),
+    <l:BinOp0> ">=" <r:BinOp1> => Expr::BinOp(BinOp::GreaterThanOrEq, l, r),
+    <l:BinOp0> "<=" <r:BinOp1> => Expr::BinOp(BinOp::LessThanOrEq, l, r),
+    <l:BinOp0> "&&" <r:BinOp1> => Expr::BinOp(BinOp::And, l, r),
+    <l:BinOp0> "||" <r:BinOp1> => Expr::BinOp(BinOp::Or, l, r),
+    <l:BinOp0> "==" <r:BinOp1> => Expr::BinOp(BinOp::Eq, l, r),
+    <l:BinOp0> "/=" <r:BinOp1> => Expr::BinOp(BinOp::Ineq, l, r),
+    <l:BinOp0> ":" <r:BinOp1> => Expr::BinOp(BinOp::ListCons, l, r),
+    BinOp1
+}
+
+pub BinOp1: Expr = {
+    <l:BinOp1> "+" <r:BinOp2> => Expr::BinOp(BinOp::Add, l, r),
+    <l:BinOp1> "-" <r:BinOp2> => Expr::BinOp(BinOp::Sub, l, r),
+    BinOp2,
+};
+
+BinOp2: Expr = {
+    <l:BinOp2> "*" <r:Expr2> => Expr::BinOp(BinOp::Mul, l, r),
+    <l:BinOp2> "/" <r:Expr2> => Expr::BinOp(BinOp::Div, l, r),
+    <l:BinOp2> "^" <r:Expr2> => Expr::BinOp(BinOp::Exp, l, r),
+    <l:BinOp2> "%" <r:Expr2> => Expr::BinOp(BinOp::Mod, l, r),
+    Expr2,
+};
+
+////////// Expr2
+
+pub Expr2: Expr = {
+    <callee: Expr3> <args: Expr3+> => Expr::App(Box::new(callee), args),
+    Expr3
+}
+
+////////// Expr3
+
+pub Expr3: Expr = {
+    Literal,
+    PCIdentifier,
+    Identifier,
+    "(" <v:Comma<ExprX>> ")" => if v.len() == 1 {
+        v[0].clone()
+    } else {
+        Expr::Tuple(<>)
+    },
+    "[" <Comma<ExprX>> "]" => Expr::List(<>),
+}
+
+////////// .. , .. , ..
+
+Comma<T>: Vec<T> = {
+    <mut v:(<T> ",")*> <e:T> => if !v.is_empty() {
+        v.push(e);
+        v
+    } else {
+        e
+    }
+}
+
+////////// TypeAssign (@f :: )
+
+TAssign: Type = {
+    <mut v:(<Type> "->")*> <e:Type> =>
+    if !v.is_empty() {
+        Type::App(v, Box::new(e))
+    } else {
+        e
+    }
+}
+
+pub TypeAssign: TypeAssign = {
+    "@" <Identifier> "::" <TAssign> => TypeAssign(<>)
+}
+
+////////// Identifiers
+
+pub PCIdentifier: Identifier = { 
+    <r"[A-Z][a-zA-Z0-9]*"> => Identifier(<>.to_owned())
+}
+
+pub Identifier: Identifier = {
+    <r"[a-z][a-zA-Z0-9]*"> => Identifier(<>.to_owned())
+}
+
+////////// Literal (Float, Integer, String, Char, True, False)
+
+pub Literal: Literal = {
+    <r"[+-]?\d+\.\d+"> => Literal::Float(f64::from_str(<>).expect("Expected floating point number")),
+    <r"[+-]?\d+"> => Literal::Integer(<>.parse::<i64>().expect("Expected an integer")),
+    <r#""[^"]*""#> => Literal::String(<>[1..(<>.len()-1)].to_owned()),
+    <r"'[^']'"> => Literal::Char(<>[1..(<>.len()-1)].chars().next().expect("Expected a character"))
+}
+
+
+////////// Type (Id, Generic, Either (a b))
+
+pub Type: Type = {
+    <callee: PCIdentifier> "<" <args: (Type)+> ">" => Type::App(Box::new(Type::new(callee)), args),
+    Type1
+}
+
+pub Type1: Type = {
+    "(" <v:Comma<Type>> ")" => if v.len() == 1 {
+        v[0].clone()
+    } else {
+        Type::Tuple(<>)
+    },
+    PCIdentifier => Type::Id(<>),
+    Identifier => Type::Generic(<>)
+}
+
+////////// TypeDecl (type) & Variant
+
+pub Variant: Variant = {
+    <n:PCIdentifier> <v:Type*> => Variant(n, v)
+}
+
+pub TypeDecl: TypeDecl = {
+    "type" <n: PCIdentifier> <tv:Identifier*> "=" <mut vs:(<Variant> "|")*> <v:Variant?> =>
+        match v {
+            None => TypeDecl {
+                name: n,
+                typevars: tv,
+                variants: vs
+            },
+            Some(v) => {
+                vs.push(v);
+                TypeDecl {
+                    name: n,
+                    typevars: tv,
+                    variants: vs
+                }
+            }
+        }
+}
+
+////////// Pattern (_, a, Just (x), x:xs)
+
+pub Pattern: Pattern = {
+    #[precedence(level = "0")]
+    "_" => Pattern::Wildcard,
+    <i:PCIdentifier> <v:("(" Type+ ")")?> => {
+        let v = v.map(|x| x.1).unwrap_or(Vec::new());
+        if !v.is_empty() {
+            Pattern::App(Box::new(Pattern::Id(i)), v)
+        } else {
+            Pattern::Id(i)
+        }
+    },
+    Identifier => Pattern::Variable(<>),
+    Literal => Pattern::Literal(<>),
+
+    #[precedence(level = "1")] #[assoc(side = "left")]
+    <p1:Pattern> ":" <p2:Pattern> => Pattern::ListCons(Box::new(p1), Box::new(p2))
+}
+
+////////// Binds
+
+pub Bind: Bind = {
+    <n:Identifier> <v:Pattern*> "=" <e:Expr> => if !v.is_empty() {
+        Bind(n, Expr::Lambda(v, Box::new(e)))
+    } else {
+        Bind(n, e)
+    }
+}
+
+pub Binds: Vec<Bind> = {
+    <mut v:(<Bind> ";")+> <e:Bind?> => match e {
+        None => v,
+        Some(e) => {
+            v.push(e);
+            v
+        }
+    }
+}
+
+////////// Program
+
+// pub Program: Vec<Statment> = Statment*;
+// pub Program: Vec<Literal> = Literal*;
+pub Program: Vec<Expr> = ExprX*;

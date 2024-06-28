@@ -1,0 +1,111 @@
+// Comment & whitespace
+COMMENT = _{ ("/*" ~ (!"*/" ~ ANY)* ~ "*/") | ("//" ~ (!"\n" ~ ANY)*) }
+WHITESPACE = _{ " " | NEWLINE }
+
+// Literals
+/////////// Numbers
+int = @{ ("+" | "-")? ~ ASCII_DIGIT+ }
+float = @{ ("+" | "-")? ~ ASCII_DIGIT+ ~ (".") ~ (ASCII_DIGIT*)? }
+
+/////////// String
+string = { "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+
+/////////// Character
+character = { "'" ~ (!"'" ~ ANY) ~ "'" }
+
+/////////// Bool
+true_ = { "True" }
+false_ = { "False" }
+
+literals = { float | int | string | character | true_ | false_ }
+
+// Builtins
+binop = { simple_expr ~ add_sub ~ factor | factor }
+factor = { simple_expr ~ mul_div ~ cmpop | cmpop }
+cmpop = { simple_expr ~ cmp ~ expr | simple_expr }
+
+// op = _{ add_sub | mul_div | cmp | mod_ | exp }
+
+add_sub = _{ add | sub }
+mul_div = _{ mul | div }
+cmp = _{ lt | gt | lte | gte | eq | neq | or | and | colon }
+
+lt = @{ "<" }
+gt = @{ ">" }
+gte = @{ ">=" }
+lte = @{ "<=" }
+and = @{ "&&" }
+or = @{ "||" }
+eq = @{ "==" }
+neq = @{ "/=" }
+colon = @{ ":" }
+add = @{ "+" }
+sub = @{ "-" }
+mul = @{ "*" }
+div = @{ "/" }
+exp = @{ "^" }
+mod_ = @{ "%" }
+
+keyword = _{
+    "let" |
+    "in" |
+    "if" |
+    "then" |
+    "else" |
+    "type"
+}
+// Identifiers
+ident = @{ !(keyword) ~ ASCII_ALPHA_LOWER ~ ASCII_ALPHANUMERIC* }
+pc_id = @{ !(keyword) ~ ASCII_ALPHA_UPPER ~ ASCII_ALPHANUMERIC* }
+
+// Type
+type_ = _{ function_type | simple_type }
+simple_type = { app_type | ident | pc_id | group_type | tuple_type }
+group_type = { "{" ~ type_ ~ "}" }
+app_type = { pc_id ~ type_+ }
+tuple_type = { "(" ~ (type_ ~ ",")* ~ type_ ~ ")" }
+function_type = { (simple_type ~ "->")* ~ simple_type }
+
+// TypeDecl
+type_decl = { "type" ~ pc_id ~ ident* ~ "=" ~ ((variant ~ "|")* ~ variant) }
+variant = { pc_id ~ type_* }
+
+// TypeAssign
+type_assign = { ident ~ "::" ~  type_ }
+
+// Pattern
+pattern = { list_cons_pattern | simple_pattern }
+simple_pattern = _{ app_pattern | wildcard | ident | pc_id | literals }
+wildcard = { "_" }
+app_pattern = { pc_id ~ type_+ }
+list_cons_pattern = { simple_pattern ~ ":" ~ pattern }
+
+// Bind
+bind = { ident ~ pattern* ~ "=" ~ expr }
+
+// Expr
+expr = _{ simple_expr | binop | annotation  }
+simple_expr = _{ list_expr | tuple_expr |  let_ | condition | lambda | match_ | app_expr | fundamentals }
+let_ = { "let" ~ (bind ~ ";")* ~ bind ~ "in" ~ expr }
+condition = { "if" ~ expr ~ "then" ~ expr ~ "else" ~ expr }
+lambda = { "\\" ~ pattern+ ~ "->" ~ expr }
+match_ = { "match" ~ expr ~ "with" ~ "\n"? ~ ("|" ~ pattern ~ "->" ~ expr ~ "\n"?)+ }
+app_expr = { (ident | pc_id) ~ fundamentals+ }
+annotation = { simple_expr ~ "::" ~ type_ }
+list_expr = { "[" ~ (expr ~ ",")* ~ expr ~ "]" }
+tuple_expr  = { "(" ~ (expr ~ ",")* ~ expr ~ ")" }
+fundamentals = _{
+    literals
+    | pc_id
+    | ident
+    | list_expr
+    | tuple_expr
+}
+
+stmt = {
+    bind
+    | type_decl
+    | type_assign
+}
+
+program = _{ stmt+ }
