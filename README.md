@@ -27,6 +27,8 @@
 ## Fib
 ```hs
 fib :: Integer -> Integer
+f 0 = 0
+f 1 = 1
 fib n = fib (n - 1) + fib (n - 2)
 ```
 
