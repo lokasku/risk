@@ -763,7 +763,7 @@ impl<'a> Parser<'a> {
                 let id = self.expect_any_identifier()?;
                 let cloned = self.clone();
                 let mut ty = self.parse_pattern();
-                if ty.is_ok() {
+                if ty.is_ok() && id.name.chars().nth(0).unwrap().is_uppercase() {
                     let mut types = vec![];
                     while ty.is_ok() {
                         types.push(ty.unwrap());
