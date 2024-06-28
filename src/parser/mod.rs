@@ -293,15 +293,16 @@ impl<'a> Parser<'a> {
             let id = self.expect_identifier()?;
             idents.push(id);
         }
-        self.expect_current(token![lparen])?;
         let mut variants = Vec::new();
+        self.expect_current(token![lparen])?;
         let variant = self.parse_variant()?;
+        self.expect_current(token![rparen])?;
         variants.push(variant);
-        while self.match_token(lexer::TokenKind::Pipe)? {
+        while self.match_token(lexer::TokenKind::LParen)? {
             let variant = self.parse_variant()?;
             variants.push(variant);
+            self.expect_current(token![rparen])?;
         }
-        self.expect_current(token![rparen])?;
 
         Ok(ast::Statement::TypeDecl(TypeDecl::new(
             id,
@@ -332,22 +333,7 @@ impl<'a> Parser<'a> {
         let id = self.expect_identifier()?;
         let mut args = Vec::new();
         while !self.match_token(lexer::TokenKind::Assign)? {
-            let arg = match self.peek().kind {
-                lexer::TokenKind::Identifier(_) => {
-                    ast::Pattern::Variable(self.expect_identifier()?)
-                }
-                lexer::TokenKind::PCIdentifier(_) => ast::Pattern::Id(self.expect_pc_identifier()?),
-                lexer::TokenKind::LParen => {
-                    self.advance()?;
-                    let pat = self.parse_pattern()?;
-                    self.expect_current(token![rparen])?;
-                    pat
-                }
-                _ => {
-                    let lit = self.parse_literal()?;
-                    ast::Pattern::Literal(lit)
-                }
-            };
+            let arg = self.parse_pattern()?;
             args.push(arg);
         }
         let expr = self.parse_expr()?;
