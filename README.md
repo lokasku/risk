@@ -1,7 +1,15 @@
 <br>
 <br>
-<p align="center"><img src="assets/risk.png" alt="Risk" width="150"></p>
-<p align="center">Risk is a purely functional, strongly typed language.</p>
+<div align="center">
+
+<p><img src="assets/risk.png" alt="Risk" width="150"></p>
+
+<p>Risk is a purely functional, strongly typed language.</p>
+
+![GitHub Stars](https://img.shields.io/github/stars/lokasku/risk?style=for-the-badge&color=F3450D)
+![GitHub Forks](https://img.shields.io/github/forks/lokasku/risk?style=for-the-badge&color=A65AC8)
+
+</div>
 
 ## Roadmap
 - [x] Lexer
