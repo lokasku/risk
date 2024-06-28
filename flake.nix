@@ -1,5 +1,5 @@
 {
-  description = "Some pure functional programming language.";
+  description = "Risk is a purely functional, strongly typed language.";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";

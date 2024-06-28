@@ -50,8 +50,6 @@ fn main() {
 
         analyze(&mut ao, ast.clone());
 
-        // println!("AO ========\n{:#?}", ao);
-
         for se in ao.errors {
             se.report(&args[1])
         }

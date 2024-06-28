@@ -1,7 +1,7 @@
 <br>
 <br>
 <p align="center"><img src="assets/risk.png" alt="Risk" width="150"></p>
-<h3 align="center"><i>Risk</i>, some pure functional programming language.</h3>
+<p align="center">Risk is a purely functional, strongly typed language.</p>
 
 ## Roadmap
 - [x] Lexer
