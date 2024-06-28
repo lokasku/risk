@@ -56,31 +56,6 @@ impl Chunk {
     }
 
     pub fn dissassemble(&mut self, name: &str) {
-        let special_char = "━";
-        let bordure_char0 = "╭";
-        let bordure_char1 = "╯";
-        let bordure_char2 = "╮";
-        let bordure_char3 = "╰";
-        let byte_code_s = " Bytecode ";
-        let space0 = " ".repeat(2 + name.len() / 2);
-        let space1 = " ".repeat(2 + name.len() / 2);
-        let bordure0 = format!(
-            "{}{}{}{}{}",
-            bordure_char0,
-            special_char.repeat(name.len() / 2).as_str(),
-            byte_code_s,
-            special_char.repeat(name.len() / 2).as_str(),
-            bordure_char2
-        );
-        let bordure1 = format!(
-            "{}{}{}",
-            bordure_char3,
-            special_char.repeat(name.len() + byte_code_s.len()).as_str(),
-            bordure_char1
-        );
-        println!("{}", bordure0);
-        println!("{}{}{}", space0, name, space1);
-        println!("{}", bordure1);
         let mut index = 0;
         while index < self.count {
             index = self.dissassembleInstruction(index);

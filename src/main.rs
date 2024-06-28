@@ -42,11 +42,12 @@ fn main() {
     if let Err(e) = ast {
         e.report(&args[1]);
     } else {
-        println!("{:#?}", ast.clone().unwrap());
         let mut ao = AnalysisOutput::new();
 
         let ast = ast.unwrap();
-        println!("AST ========\n{:#?}", ast.clone());
+
+        // Print the AST
+        // println!("╭─━━━━━━━━━ AST ━━━━━━━\n{:#?}\n╰─━━━━━━━━━━━━━━━━━━━━━\n", ast.clone());
 
         analyze(&mut ao, ast.clone());
 
@@ -60,6 +61,8 @@ fn main() {
 
         let mut chunk = compiler::compile_program(ast.statements);
 
+        println!("\n╭─━━━━━━━━━ Bytecode ━━━━━━━━━─╮");
         chunk.dissassemble("test.txt");
+        println!("╰─━━━━━━━━━━━━━━━━━━━━━━━━━━━━━─╯");
     }
 }
