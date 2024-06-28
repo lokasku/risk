@@ -43,7 +43,6 @@ fn main() {
         e.report(&args[1]);
     } else {
         println!("{:#?}", ast.clone().unwrap());
-        let mut semantics_analyzer = AnalysisOutput::new();
         let mut ao = AnalysisOutput::new();
 
         let ast = ast.unwrap();
@@ -64,6 +63,5 @@ fn main() {
         let mut chunk = compiler::compile_program(ast.statements);
 
         chunk.dissassemble("test.txt");
-
     }
 }

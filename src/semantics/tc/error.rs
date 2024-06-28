@@ -58,7 +58,7 @@ impl TypeCheckerError {
             TypeCheckerErrorKind::InfiniteType { span } => {
                 report = report.with_message("Infinite type");
             }
-            TypeCheckerErrorKind::AmbiguousType { pan } => {
+            TypeCheckerErrorKind::AmbiguousType { span } => {
                 report = report.with_message("Ambiguous type");
             }
             TypeCheckerErrorKind::IncompatibleTypes {

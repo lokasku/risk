@@ -1,11 +1,10 @@
 {
   description = "Some pure functional programming language.";
-  
+
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     flake-utils = {
       url = "github:numtide/flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     fenix = {
       url = "github:nix-community/fenix";
@@ -27,7 +26,9 @@
         ];
 
         naersk-lib = naersk.lib.${system}.override {
-          inherit (toolchain) cargo rustc;
+          inherit (toolchain);
+          rustc = toolchain;
+          cargo = toolchain;
         };
 
         risk = naersk-lib.buildPackage {
@@ -39,7 +40,7 @@
         defaultPackage = self.packages.${system}.risk;
 
         devShell = pkgs.mkShell rec {
-          packages = with pkgs; [ toolchain pkgs.ghc ];
+          packages = with pkgs; [ toolchain ];
           RUST_BACKTRACE = 0;
           RUSTFLAGS = "-Zmacro-backtrace";
         };
